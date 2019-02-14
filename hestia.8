@@ -1,0 +1,151 @@
+.TH hestia 8 2012-Mar "linux" "heatherly custom tools manual"
+
+
+.SH NAME
+hestia \- light, reliable, and secure getty replacement service
+
+.SH SYNOPSIS
+.nf
+.B hestias [URGENTS] [OPTIONS]
+
+.SH DESCRIPTION (short version)
+hestia is a light, reliable, and secure version of the classic posix-defined
+getty terminal service which allows for additional security, monitoring,
+and logging for a modern environment while consolidating the daemons into one.
+
+.SH HERITAGE and NAMESAKE
+hestia is one of the twelve great olympic gods in the greek pantheon, firstborn
+of the six children of cronus and rhea, and so sister to zeus, poseidon,
+and hades.  she serves as the principle protector of civic order, domestic
+harmony, hearth, and home.  she was typically represented as gentle, quiet,
+and modest; sitting on a woolen cushion upon wooden throne; and wearing a veil
+to cover her face.  every hearth is her alter and the central public hearth
+in every city had a fire burning continuously in her name.  she was typically
+worshiped through the uninterrupted burning of her fire and given the first
+offering of every sacrifice, before even zeus.  she had no specific cult as
+she was universal.  she is sometimes represented with a hearth, kettle, or pig.
+
+.SH REASONING
+
+.SS purpose and problem (p)
+getty is the generic name for the defacto standard unix process that manages
+a terminal line, administers the login process, and prevents unauthorized
+access to the system -- in combination with login, su, and other programs.
+getty stands for "get tty" meaning get terminal line.  our current issue is
+that the getty process is not modifiable to tighten and improve the security
+of the login process as well as providing better feedback.
+
+.SS requirements and objectives (ro)
+there are several sources of requirements so that hestia serves her
+posix-defined niche properly.  additionally there are objectives which i have
+added to get the capabilities i am looking for.
+
+basic getty requirements...
+   -- control and lock a virtual device line (secure it)
+   -- respond to login requests
+   -- administer the login process (with login)
+   -- reject failed login attempts
+   -- launch appropriate shell for success (with login)
+
+getty variant objectives...
+   -- handle multiple line at the same time (ngetty)
+   -- remove serial line complexities (mingetty)
+   -- logging to utmp, wtmp, btmp, lastlog, and sulog files
+
+personal objectives...
+   -- create feedback file to detail each login attempt
+   -- create summary status file about current state
+   -- ability to customize the login process
+   -- use multi-line terminal fonts from figlet to make it obsucre
+   -- display screen information that must be interpreted
+   -- take away most customization to avoid security holes
+   -- lock non-monitored lines to close security gap
+   -- replace login program as well as su
+   -- focus on virtual and pseudo terminals, not dialup and serial
+   -- automatically respawn so init/inittab is not involved
+   -- automatically check valid terminal lines periodically
+   -- can hot replace itself to update its version
+
+security objectives...
+   -- never use getty with network logins (only ssh)
+   -- never use serial consoles anymore (ancient technology)
+   -- do not use with modems
+   -- no short-form with only username and password
+
+.SS alternatives, consequences, and tradeoffs (act)
+there are a number of getty alternatives that address some of the gaps
+i am concerned about.
+
+agetty
+   ++ very simple and small
+   ++ in base install of gentoo
+   ++ in portage, combined into sys-apps/util-linux package
+   ++ focused more on serial and virtual terminals
+   -- only handles a single terminal line
+   -- no ability to significantly modify
+   -- hit-and-miss logging to standard files
+   >> OUT, can not customize login and not multi-line
+
+mingetty
+   ++ very simple and small
+   ++ very, very common and supported
+   ++ high usage for debugging and control
+   ++ in portage and supported by gentoo
+   ++ focused on virtual terminals
+   -- only handles a single terminal line
+   -- no ability to significantly modify
+   -- hit-and-miss logging to standard files
+   >> OUT, can not customize login and not multi-line
+
+ngetty
+   ++ handles all serial lines in a single instance
+   ++ highly configurable and supported
+   -- focused more on dial-up lines
+   -- not in portage, so not supported by gentoo
+   -- not very commonly used
+   -- no ability to significantly modify
+   -- hit-and-miss logging to standard files
+   >> OUT, not in portage, more dialup, and not easily customizable
+
+uugetty
+   ++ very simple and small
+   -- focused more on dial-up lines
+   -- not in portage, so not supported by gentoo
+   >> OUT, not in portage, more dialup, and not easily customizable
+
+mgetty (modem getty)
+   ++ can handle fax, voice, etc
+   ++ in portage and supported by gentoo
+   ++ focused on virtual terminals
+   -- big and complex
+   -- only handles a single terminal line
+   -- no ability to significantly modify
+   -- hit-and-miss logging to standard files
+   >> OUT, more dialup, and not easily customizable
+
+fbgetty
+   ++ can handle framebuffers and images
+   ++ in portage and supported by gentoo
+   ++ focused on virtual terminals
+   -- only handles a single terminal line
+   -- no ability to significantly modify
+   -- hit-and-miss logging to standard files
+   >> OUT, don't need images as that adds complexity
+
+custom
+   ++ does exactly what i want
+   ++ i learn how to code getty
+   ++ i get more systems programming experience
+   -- bloody takes time
+   -- have to do my own maintenance
+
+.SH OPTIONS
+
+hestias_veil only requires a tty or pty cdevice file to run.  without a
+device file, hestias_veil will simply fail and return.
+
+.B required arguments
+there are no required arguments
+
+
+
