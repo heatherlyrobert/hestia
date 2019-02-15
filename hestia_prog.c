@@ -412,10 +412,10 @@ prog__unit_quiet   (void)
    yURG_logger    (x_argc, x_argv);
    yURG_urgs      (x_argc, x_argv);
    PROG_init      ();
-   prog__unit_files ();
    PROG_args      (x_argc, x_argv);
    PROG_begin     ();
    my.user_mode = MODE_UNIT;
+   prog__unit_files ();
    /*---(complete)-----------------------*/
    return 0;
 }
@@ -431,10 +431,10 @@ prog__unit_loud    (void)
    yURG_logger    (x_argc, x_argv);
    yURG_urgs      (x_argc, x_argv);
    PROG_init      ();
-   prog__unit_files ();
    PROG_args      (x_argc, x_argv);
    PROG_begin     ();
    my.user_mode = MODE_UNIT;
+   prog__unit_files ();
    /*---(complete)-----------------------*/
    return 0;
 }

@@ -72,4 +72,57 @@ rptg_ttys               (void)
    return 0;
 }
 
+char         /*--> read the last heartbeat -----------------------------------*/
+rptg__unit_heartbeat   (char *a_heartbeat)
+{
+   /*---(locals)-----------+-----+-----+-*/
+   char        rce         =  -10;
+   char        rc          =    0;
+   FILE       *f           = NULL;
+   /*---(header)-------------------------*/
+   DEBUG_RPTG   yLOG_enter   (__FUNCTION__);
+   /*---(open)---------------------------*/
+   DEBUG_RPTG   yLOG_info    ("file"      , my.name_heartbeat);
+   f = fopen (my.name_heartbeat, "rt");
+   DEBUG_RPTG   yLOG_point   ("f"         , f);
+   --rce;  if (rc < 0) {
+      DEBUG_RPTG   yLOG_exitr   (__FUNCTION__, rce);
+      return rce;
+   }
+   /*---(write)--------------------------*/
+   fgets (a_heartbeat, LEN_FIELD, f);
+   DEBUG_RPTG   yLOG_info    ("heartbeat" , a_heartbeat);
+   /*---(close)--------------------------*/
+   rc = fclose (f);
+   DEBUG_RPTG   yLOG_value   ("close"     , rc);
+   --rce;  if (rc < 0) {
+      DEBUG_RPTG   yLOG_exitr   (__FUNCTION__, rce);
+      return rce;
+   }
+   /*---(complete)-----------------------*/
+   DEBUG_RPTG   yLOG_exit    (__FUNCTION__);
+   return 0;
+}
+
+
+char*            /*--> unit test accessor ------------------------------*/
+rptg__unit              (char *a_question, int a_num)
+{ 
+   /*---(locals)-----------+-----+-----+-*/
+   char        rce         =  -10;
+   int         rc          =    0;
+   char        x_heartbeat [LEN_FIELD];
+   /*---(prepare)------------------------*/
+   strlcpy  (unit_answer, "RPTG             : question not understood", LEN_RECD);
+   /*---(crontab name)-------------------*/
+   if      (strcmp (a_question, "heartbeat"     )  == 0) {
+      snprintf (unit_answer, LEN_RECD, "RPTG heartbeat   : %s", my.heartbeat);
+   }
+   else if (strcmp (a_question, "lastbeat"      )  == 0) {
+      rptg__unit_heartbeat (x_heartbeat);
+      snprintf (unit_answer, LEN_RECD, "RPTG lastbeat    : %s", x_heartbeat);
+   }
+   /*---(complete)-----------------------*/
+   return unit_answer;
+}
 

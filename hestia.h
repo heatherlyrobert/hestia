@@ -21,8 +21,8 @@
 #define     P_CREATED   "2012-01"
 #define     P_DEPENDS   "yEXEC, ySEC, ySTR, yPARSE"
 
-#define     P_VERNUM    "1.0d"
-#define     P_VERTXT    "tty functions valid, open, close, review, init, and wrap are unit tested"
+#define     P_VERNUM    "1.0e"
+#define     P_VERTXT    "base_config has a unit test now, made sure it has good defaults"
 
 #define     P_USAGE     "hestia [OPTIONS]"
 #define     P_DEBUG     "hestia_debug [URGENTS] [OPTIONS]"
@@ -396,11 +396,13 @@ char        tty__unit_unused        (int a_tty);
 
 long        exec_time               (long a_now);
 char        exec_poll               (void);
+char*       exec__unit              (char *a_question, int a_num);
 
 char        poller                  (void);
 
 char        rptg_heartbeat          (void);
 char        rptg_ttys               (void);
+char*       rptg__unit              (char *a_question, int a_num);
 
      
 int         audit_find         (char *a_dev, int  a_pid, int *a_pos);

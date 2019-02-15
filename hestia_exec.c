@@ -283,3 +283,29 @@ exec_poll               (void)
  *>    DEBUG_LOOP   yLOG_exit    (__FUNCTION__);                                                                                                        <* 
  *>    return   0;                                                                                                                                      <* 
  *> }                                                                                                                                                   <*/
+
+
+
+
+/*====================------------------------------------====================*/
+/*===----                      unit test accessor                      ----===*/
+/*====================------------------------------------====================*/
+static void      o___UNITTEST________________o (void) {;}
+
+char*            /*--> unit test accessor ------------------------------*/
+exec__unit              (char *a_question, int a_num)
+{
+   /*---(prepare)------------------------*/
+   strlcpy  (unit_answer, "EXEC             : question not understood", LEN_RECD);
+   /*---(crontab name)-------------------*/
+   if      (strcmp (a_question, "time"    )        == 0) {
+      snprintf (unit_answer, LEN_RECD, "EXEC time        : %-10d", my.now);
+   }
+   else if (strcmp (a_question, "pid"     )        == 0) {
+      snprintf (unit_answer, LEN_RECD, "EXEC pid         : %d", my.pid);
+   }
+   /*---(complete)-----------------------*/
+   return unit_answer;
+}
+
+

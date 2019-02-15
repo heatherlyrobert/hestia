@@ -145,7 +145,7 @@ base_config             (void)
       return rce;
    }
    /*---(lines)--------------------------*/
-   while (rc >= 0) {
+   while (1) {
       /*---(read)------------------------*/
       rc = yPARSE_read (NULL, NULL);
       DEBUG_INPT   yLOG_value   ("yparse"    , rc);
@@ -171,7 +171,6 @@ base_config             (void)
       if (rc < 0) {
          DEBUG_INPT   yLOG_note    ("could not read status (default off)");
          strcpy (x_status, "off");
-
       }
       DEBUG_INPT   yLOG_info    ("x_status"  , x_status);
       /*---(style)-----------------------*/
