@@ -12,10 +12,6 @@ main               (int a_argc, char *a_argv[])
    char        rc          =    0;
 
 
-   printf ("starting...\n");
-   tty_review  ();
-   return 0;
-
 
    /*---(standard startup)---------------*/
    if (rc >= 0)  rc = PROG_preinit ();
@@ -28,16 +24,25 @@ main               (int a_argc, char *a_argv[])
    if (rc < 0) {
       return rc;
    }
+   /*---(main)---------------------------*/
+   switch (my.user_mode) {
+   case MODE_DAEMON :
+      rc = PROG_daemon  ();
+      /*> rc = poller       ();                                                       <*/
+      break;
+   case MODE_VERIFY :
+   default          :
+      rc = rptg_ttys   ();
+      break;
+   }
    /*---(prepare)------------------------*/
-   if (rc == 0)  rc = conf_open    ();
-   if (rc == 0)  rc = conf_read    ();
-   if (rc == 0)  rc = conf_close   ();
-   if (rc == 0)  rc = tty_existing ();
-   if (rc == 0)  rc = tty_openall  ();
-   /*---(run)----------------------------*/
-   if (rc == 0)  rc = poller       ();
+   /*> if (rc == 0)  rc = conf_open    ();                                            <* 
+    *> if (rc == 0)  rc = conf_read    ();                                            <* 
+    *> if (rc == 0)  rc = conf_close   ();                                            <* 
+    *> if (rc == 0)  rc = tty_existing ();                                            <* 
+    *> if (rc == 0)  rc = tty_openall  ();                                            <*/
    /*---(done)---------------------------*/
-   if (rc == 0)  rc = PROG_end     ();
+   rc = PROG_end     ();
    /*---(complete)-----------------------*/
    return 0;
 }

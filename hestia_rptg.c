@@ -41,3 +41,35 @@ rptg_heartbeat          (void)
    DEBUG_RPTG   yLOG_exit    (__FUNCTION__);
    return 0;
 }
+
+char
+rptg_ttys               (void)
+{
+   /*---(locals)-----------+-----+-----+-*/
+   char        i           =    0;
+   /*---(header)-------------------------*/
+   DEBUG_RPTG   yLOG_enter   (__FUNCTION__);
+   /*---(walk trhu ttys)-----------------*/
+   DEBUG_RPTG   yLOG_value   ("MAX_TTY"   , MAX_TTYS);
+   for (i = 0; i < MAX_TTYS; ++i) {
+      DEBUG_RPTG   yLOG_value   ("tty#"      , i);
+      DEBUG_RPTG   yLOG_complex ("g_ttys"    , "%2d %-12.12s %c %c %c %c", i, g_ttys [i].device, g_ttys [i].valid, g_ttys [i].allowed, g_ttys [i].watched, g_ttys [i].active);
+      printf ("%2d %-6.6s %-11.11s %2d %2d %-20.20s %c",
+            i, g_ttys [i].name  , g_ttys [i].device,
+            g_ttys [i].cluster  , g_ttys [i].host_num,
+            g_ttys [i].host_name, g_ttys [i].style);
+      printf ("   %c %c %c %c   %2d %6d",
+            g_ttys [i].valid, g_ttys [i].allowed, g_ttys [i].watched, g_ttys [i].active,
+            g_ttys [i].fd, g_ttys [i].rpid);
+      printf ("   %2d %2d %2d %2d %2d",
+            g_ttys [i].attempts, g_ttys [i].complete, g_ttys [i].kills,
+            g_ttys [i].errors, g_ttys [i].failures);
+      printf ("\n");
+      /*---(done)------------------------*/
+   }
+   /*---(complete)-----------------------*/
+   DEBUG_RPTG   yLOG_exit    (__FUNCTION__);
+   return 0;
+}
+
+

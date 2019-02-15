@@ -40,37 +40,37 @@ PROG_about         (void)
    int         x_len       =    0;
    /*---(display)----------+-----+-----+-*/
    printf("\n");
-   printf("focus    : %s\n", P_FOCUS);
-   printf("niche    : %s\n", P_NICHE);
-   printf("purpose  : %s\n", P_PURPOSE);
+   printf("focus     : %s\n", P_FOCUS);
+   printf("niche     : %s\n", P_NICHE);
+   printf("purpose   : %s\n", P_PURPOSE);
    printf("\n");
-   printf("namesake : %s\n", P_NAMESAKE);
-   printf("heritage : %s\n", P_HERITAGE);
-   printf("imagery  : %s\n", P_IMAGERY);
+   printf("namesake  : %s\n", P_NAMESAKE);
+   printf("heritage  : %s\n", P_HERITAGE);
+   printf("imagery   : %s\n", P_IMAGERY);
    printf("\n");
-   printf("system   : %s\n", P_SYSTEM);
-   printf("language : %s\n", P_LANGUAGE);
-   printf("codesize : %s\n", P_CODESIZE);
+   printf("system    : %s\n", P_SYSTEM);
+   printf("language  : %s\n", P_LANGUAGE);
+   printf("codesize  : %s\n", P_CODESIZE);
    printf("\n");
-   printf("author   : %s\n", P_AUTHOR);
-   printf("created  : %s\n", P_CREATED);
-   printf("depends  : %s\n", P_DEPENDS);
+   printf("author    : %s\n", P_AUTHOR);
+   printf("created   : %s\n", P_CREATED);
+   printf("depends   : %s\n", P_DEPENDS);
    printf("\n");
-   printf("ver num  : %s\n", P_VERNUM);
-   printf("ver txt  : %s\n", P_VERTXT);
+   printf("ver num   : %s\n", P_VERNUM);
+   printf("ver txt   : %s\n", P_VERTXT);
    printf("\n");
-   printf("usage    : %s\n", P_USAGE);
-   printf("debug    : %s\n", P_DEBUG);
+   printf("usage     : %s\n", P_USAGE);
+   printf("debug     : %s\n", P_DEBUG);
    printf("\n");
    strcpy (t, P_SUMMARY);
    x_len = strlen (t);
    for (i = 0; i < x_len; ++i)   if (t [i] == '¦')  t [i] = '\n';
    printf ("%s\n", t);
-   printf("priority : %s\n", P_PRIORITY);
-   printf("saying   : %s\n", P_SAYING);
+   printf("priority  : %s\n", P_PRIORITY);
+   printf("principal : %s\n", P_PRINCIPAL);
    printf("\n");
-   printf("alterns  : %s\n", P_ALTERNS);
-   printf("reminder : %s\n", P_REMINDER);
+   printf("alterns   : %s\n", P_ALTERNS);
+   printf("reminder  : %s\n", P_REMINDER);
    printf("\n");
    exit (0);
 }
@@ -104,9 +104,12 @@ PROG_init          (void)
    DEBUG_TOPS   yLOG_info    ("yEXEC"     , yEXEC_version   ());
    DEBUG_TOPS   yLOG_info    ("yLOG"      , yLOG_version    ());
    DEBUG_TOPS   yLOG_info    ("yPARSE"    , yPARSE_version  ());
-   DEBUG_TOPS   yLOG_info    ("ySEC"      , ySEC_version    ());
+   /*> DEBUG_TOPS   yLOG_info    ("ySEC"      , ySEC_version    ());                  <*/
    DEBUG_TOPS   yLOG_info    ("ySTR"      , ySTR_version    ());
    DEBUG_TOPS   yLOG_info    ("yURG"      , yURG_version    ());
+   /*---(defaults)-----------------------*/
+   my.user_mode = MODE_DAEMON;
+   srand (time(NULL));
    /*---(call whoami)--------------------*/
    rc = yEXEC_whoami (&my.pid, &my.ppid, &my.uid, NULL, &my.who, 'n');
    DEBUG_TOPS   yLOG_value   ("whoami"    , rc);
@@ -128,23 +131,53 @@ PROG_init          (void)
    return 0;
 }
 
+#define    TWOARG      if (two_arg == 1)
+
 char         /*--> command line arguments -----------[ ------ [abc.de.fghijk]-*/
-PROG_args          (int a_argc, char *a_argv[])
+PROG_args          (int argc, char *argv[])
 {
-   /*---(begin)------------+-----------+-*/
-   DEBUG_PROG   yLOG_enter  (__FUNCTION__);
-   /*---(locals)-----------+-----------+-*/
-   int         i           = 0;
-   /*---(allocation)---------------------*/
-   /*> ntty   = a_argc - 1;                                                             <* 
-    *> yLOG_value  ("ttys"      , ntty);                                              <* 
-    *> ttys      = (tTTY  *) malloc (sizeof (tTTY ) * ntty);                          <* 
-    *> yLOG_note   ("allocated ttys");                                                <* 
-    *> polling   = (tPOLL *) malloc (sizeof (tPOLL) * ntty);                          <* 
-    *> yLOG_note   ("allocated polling");                                             <*/
-   srand (time(NULL));
+   /*---(locals)-------------------------*/
+   char     *a         = NULL;         /* current argument                    */
+   int       i         = 0;            /* loop iterator -- arguments          */
+   int       x_len     = 0;            /* argument length                     */
+   char      two_arg   = 0;
+   /*---(begin)--------------------------*/
+   DEBUG_TOPS   yLOG_enter   (__FUNCTION__);
+   DEBUG_TOPS   yLOG_value   ("argc"      , argc);
+   if (argc == 1) {
+      DEBUG_TOPS   yLOG_exit    (__FUNCTION__);
+      return 0;
+   }
+   /*---(program name)--------------------------*/
+   strlcpy (my.prog_name, argv[0], LEN_USER);
+   DEBUG_TOPS   yLOG_value   ("prog name" , my.prog_name);
+   /*---(process)------------------------*/
+   for (i = 1; i < argc; ++i) {
+      a = argv [i];
+      if (i < argc - 1) two_arg = 1; else two_arg = 0;
+      x_len = strllen (a, LEN_RECD);
+      /*---(skip debugging)--------------*/
+      if      (a[0] == '@')                     continue;
+      my.user_mode = MODE_VERIFY;
+      /*---(version)---------------------*/
+      if      (strcmp (a, "--version"      ) == 0) {
+         printf ("%s\n", PROG_version ());
+         DEBUG_TOPS   yLOG_exit    (__FUNCTION__);
+         return -1;
+      }
+      else if (strcmp (a, "--about"        ) == 0) {
+         PROG_about ();
+         DEBUG_TOPS   yLOG_exit    (__FUNCTION__);
+         return -1;
+      }
+      else if (strcmp (a, "--verify"       ) == 0) {
+         my.user_mode = MODE_VERIFY;
+      }
+      /*---(unknown)---------------------*/
+      else    printf("requested action not understood or incomplete\n");
+   }
    /*---(complete)-----------------------*/
-   DEBUG_PROG   yLOG_exit   (__FUNCTION__);
+   DEBUG_TOPS   yLOG_exit    (__FUNCTION__);
    return 0;
 }
 
@@ -167,7 +200,26 @@ PROG_begin         (void)
 char         /*--> before start, not testing --------[ ------ [abc.de.fghijk]-*/
 PROG_final         (void)
 {
-   return 0;
+   /*---(locals)-----------+-----+-----+-*/
+   char        rce         =  -10;
+   char        rc          =    0;
+   /*---(logger)-------------------------*/
+   DEBUG_TOPS   yLOG_enter   (__FUNCTION__);
+   rc = base_config ();
+   DEBUG_TOPS   yLOG_value   ("conf"      , rc);
+   --rce;  if (rc < 0) {
+      DEBUG_PROG   yLOG_exitr  (__FUNCTION__, rce);
+      return rce;
+   }
+   rc = tty_review  ();
+   DEBUG_TOPS   yLOG_value   ("review"    , rc);
+   --rce;  if (rc < 0) {
+      DEBUG_PROG   yLOG_exitr  (__FUNCTION__, rce);
+      return rce;
+   }
+   /*---(complete)-----------------------*/
+   DEBUG_PROG   yLOG_exit   (__FUNCTION__);
+   return   0;
 }
 
 
@@ -312,8 +364,8 @@ PROG_end           (void)
 {
    /*---(begin)------------+-----------+-*/
    yLOG_enter  (__FUNCTION__);
-   /*---(locals)-----------+-----------+-*/
-   int         i           = 0;
+   /*---(actions)------------------------*/
+   tty_wrap ();
    /*---(complete)-----------------------*/
    yLOG_exit   (__FUNCTION__);
    yLOG_end    ();
@@ -330,21 +382,32 @@ static void      o___UNITTEST________________o (void) {;}
 char       /*----: set up program test file locations ------------------------*/
 prog__unit_files   (void)
 {
+   /*---(locals)-----------+-----+-----+-*/
    char        x_cmd       [LEN_RECD];
-   /*> chdir    ("/tmp");                                                             <* 
-    *> sprintf  (x_cmd, "rm -fr %s* > /dev/null", DIR_UNIT);                          <* 
-    *> system   (x_cmd);                                                              <* 
-    *> rmdir    (DIR_UNIT);                                                           <* 
-    *> sprintf  (x_cmd, "mkdir %s   > /dev/null", DIR_UNIT);                          <* 
-    *> system   (x_cmd);                                                              <*/
+   /*---(change file locations)----------*/
+   snprintf (my.name_conf     , LEN_PATH, "%s%s", DIR_UNIT , FILE_CONF);
+   snprintf (my.name_exec     , LEN_PATH, "%s%s", DIR_UNIT , FILE_EXEC);
+   snprintf (my.name_status   , LEN_PATH, "%s%s", DIR_UNIT , FILE_STATUS);
+   snprintf (my.name_heartbeat, LEN_PATH, "%s%s", DIR_UNIT , FILE_HEARTBEAT);
+   /*---(wipe)---------------------------*/
+   chdir    ("/tmp");
+   sprintf  (x_cmd, "rm -fr %s* > /dev/null", DIR_UNIT);
+   system   (x_cmd);
+   /*---(set up)-------------------------*/
+   rmdir    (DIR_UNIT);
+   sprintf  (x_cmd, "mkdir %s   > /dev/null", DIR_UNIT);
+   system   (x_cmd);
+   /*---(complete)-----------------------*/
    return 0;
 }
 
 char       /*----: set up programgents/debugging -----------------------------*/
 prog__unit_quiet   (void)
 {
+   /*---(locals)-----------+-----+-----+-*/
    int         x_argc      = 1;
    char       *x_argv [1]  = { "hestia" };
+   /*---(run)----------------------------*/
    PROG_preinit   ();
    yURG_logger    (x_argc, x_argv);
    yURG_urgs      (x_argc, x_argv);
@@ -352,14 +415,18 @@ prog__unit_quiet   (void)
    prog__unit_files ();
    PROG_args      (x_argc, x_argv);
    PROG_begin     ();
+   my.user_mode = MODE_UNIT;
+   /*---(complete)-----------------------*/
    return 0;
 }
 
 char       /*----: set up programgents/debugging -----------------------------*/
 prog__unit_loud    (void)
 {
+   /*---(locals)-----------+-----+-----+-*/
    int         x_argc      = 4;
    char       *x_argv [4]  = { "hestia_unit", "@@kitchen", "@@yparse", "@@yexec"  };
+   /*---(run)----------------------------*/
    PROG_preinit   ();
    yURG_logger    (x_argc, x_argv);
    yURG_urgs      (x_argc, x_argv);
@@ -367,18 +434,23 @@ prog__unit_loud    (void)
    prog__unit_files ();
    PROG_args      (x_argc, x_argv);
    PROG_begin     ();
+   my.user_mode = MODE_UNIT;
+   /*---(complete)-----------------------*/
    return 0;
 }
 
 char       /*----: set up program urgents/debugging --------------------------*/
 prog__unit_end     (void)
 {
+   /*---(locals)-----------+-----+-----+-*/
    char        x_cmd       [LEN_RECD];
-   /*> chdir    ("/tmp");                                                             <* 
-    *> sprintf  (x_cmd, "rm -fr %s* > /dev/null", DIR_UNIT);                          <* 
-    *> system   (x_cmd);                                                              <* 
-    *> rmdir    (DIR_UNIT);                                                           <*/
+   /*---(run)----------------------------*/
    PROG_end       ();
+   /*---(wipe)---------------------------*/
+   chdir    ("/tmp");
+   sprintf  (x_cmd, "rm -fr %s* > /dev/null", DIR_UNIT);
+   system   (x_cmd);
+   /*---(complete)-----------------------*/
    return 0;
 }
 

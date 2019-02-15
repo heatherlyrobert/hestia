@@ -62,8 +62,7 @@ tty_valid               (char *a_name)
    return 0;
 }
 
-
-char         /*--> validate a tty device file -------[ ------ [abc.de.fghijk]-*/
+char         /*--> initialize the tty data ----------[ ------ [abc.de.fghijk]-*/
 tty_init                (void)
 {
    /*---(locals)-----------+-----+-----+-*/
@@ -83,26 +82,54 @@ tty_init                (void)
    /*---(initialize ttys)----------------*/
    DEBUG_PROG   yLOG_value   ("MAX_TTY"   , MAX_TTYS);
    for (i = 0; i < MAX_TTYS; ++i) {
+      DEBUG_PROG   yLOG_value   ("tty#"      , i);
       /*---(device)----------------------*/
       sprintf (g_ttys [i].name  , "tty%d"     , i);
       sprintf (g_ttys [i].device, "/dev/tty%d", i);
       /*---(host)------------------------*/
-      g_ttys [i].cluster  = rand() % 100;
+      g_ttys [i].cluster  = (rand() % 64) + 1;
       g_ttys [i].host_num = rand() % g_nhost;
       sprintf (g_ttys [i].host_name, "#%02d.%s", g_ttys[i].host_num, g_hosts [g_ttys [i].host_num]);
       /*---(flags)-----------------------*/
       g_ttys [i].valid    = TTY_INVALID;
       g_ttys [i].allowed  = TTY_BLOCKED;
       g_ttys [i].watched  = TTY_IGNORED;
-      g_ttys [i].active   = TTY_ACTIVE;
+      g_ttys [i].active   = TTY_UNUSED;
       /*---(working)---------------------*/
-      g_ttys [i].style    = TTY_COMPLEX;
+      g_ttys [i].style    = TTY_UNUSED;
       g_ttys [i].fd       = -1;
       g_ttys [i].rpid     = -1;
       /*---(stats)-----------------------*/
       g_ttys [i].attempts = 0;
       g_ttys [i].complete = 0;
       g_ttys [i].failures = 0;
+      /*---(validate)--------------------*/
+      rc = tty_valid (g_ttys [i].device);
+      if (rc >= 0)   g_ttys [i].valid    = TTY_VALID;
+      /*> DEBUG_PROG   yLOG_complex ("g_ttys"    , "%2d %-12.12s %c %c %c %c", i, g_ttys [i].device, g_ttys [i].valid, g_ttys [i].allowed, g_ttys [i].watched, g_ttys [i].active);   <*/
+      /*---(done)------------------------*/
+   }
+   /*---(complete)-----------------------*/
+   DEBUG_PROG   yLOG_exit    (__FUNCTION__);
+   return 0;
+}
+
+char         /*--> shutdown the tty data ------------[ ------ [abc.de.fghijk]-*/
+tty_wrap                (void)
+{
+   /*---(locals)-----------+-----+-----+-*/
+   char        rce         =  -10;
+   char        rc          =    0;
+   int         i           =    0;
+   /*---(header)-------------------------*/
+   DEBUG_PROG   yLOG_enter   (__FUNCTION__);
+   /*---(initialize ttys)----------------*/
+   DEBUG_PROG   yLOG_value   ("MAX_TTY"   , MAX_TTYS);
+   for (i = 0; i < MAX_TTYS; ++i) {
+      DEBUG_PROG   yLOG_value   ("tty#"      , i);
+      DEBUG_PROG   yLOG_value   (".fd"       , g_ttys [i].fd);
+      if (g_ttys [i].fd <= 0)  continue;
+      tty_close (i);
       /*---(done)------------------------*/
    }
    /*---(complete)-----------------------*/
@@ -128,12 +155,26 @@ tty_open                (int a_tty)
       return rce;
    }
    DEBUG_LOOP   yLOG_info    (".device"   , g_ttys [a_tty].device);
+   /*---(check if watched)---------------*/
+   DEBUG_LOOP   yLOG_char    (".allowed"  , g_ttys [a_tty].allowed);
+   --rce;  if (g_ttys [a_tty].allowed != TTY_ALLOWED) {
+      DEBUG_LOOP   yLOG_note    ("a_tty is not allowed to be used");
+      DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);
+      return rce;
+   }
+   /*---(check if already active)--------*/
+   DEBUG_LOOP   yLOG_char    (".active"   , g_ttys [a_tty].active);
+   --rce;  if (g_ttys [a_tty].active != TTY_UNUSED) {
+      DEBUG_LOOP   yLOG_note    ("a_tty is not unused (can not use)");
+      DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);
+      return rce;
+   }
    /*---(check existing status)----------*/
    DEBUG_LOOP   yLOG_value   (".fd"       , g_ttys [a_tty].fd);
    --rce;  if (g_ttys [a_tty].fd >= 0) {
       DEBUG_LOOP   yLOG_note    ("a_tty already open (nothing to do)");
       DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);
-      return 0;
+      return rce;
    }
    /*---(change ownership)---------------*/
    rc = chown (g_ttys [a_tty].device, 0, 0);
@@ -168,8 +209,9 @@ tty_open                (int a_tty)
       return rce;
    }
    /*---(save file descriptor)-----------*/
-   g_ttys  [a_tty].fd = x_fd;
-   g_polls [a_tty].fd = x_fd;
+   g_ttys  [a_tty].fd      = x_fd;
+   g_polls [a_tty].fd      = x_fd;
+   g_ttys  [a_tty].watched = TTY_WATCHED;
    /*---(complete)-----------------------*/
    DEBUG_LOOP   yLOG_exit    (__FUNCTION__);
    return x_fd;
@@ -192,12 +234,19 @@ tty_close               (int a_tty)
       return rce;
    }
    DEBUG_LOOP   yLOG_info    (".device"   , g_ttys [a_tty].device);
+   /*---(check if watched)---------------*/
+   DEBUG_LOOP   yLOG_char    (".watched"  , g_ttys [a_tty].watched);
+   --rce;  if (g_ttys [a_tty].watched != TTY_WATCHED) {
+      DEBUG_LOOP   yLOG_note    ("a_tty is not watched (nothing to do)");
+      DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);
+      return rce;
+   }
    /*---(check existing status)----------*/
    DEBUG_LOOP   yLOG_value   (".fd"       , g_ttys [a_tty].fd);
-   if (g_ttys [a_tty].fd < 0) {
+   --rce;  if (g_ttys [a_tty].fd < 0) {
       DEBUG_LOOP   yLOG_note    ("a_tty not open (nothing to do)");
       DEBUG_LOOP   yLOG_exit    (__FUNCTION__);
-      return 0;
+      return rce;
    }
    --rce;  if (g_ttys [a_tty].fd < 3) {
       DEBUG_LOOP   yLOG_note    ("reserved for stdin, strout, stderr");
@@ -214,6 +263,7 @@ tty_close               (int a_tty)
    /*---(save file descriptor)-----------*/
    g_ttys  [a_tty].fd = -1;
    g_polls [a_tty].fd = -1;
+   g_ttys  [a_tty].watched = TTY_IGNORED;
    /*---(complete)-----------------------*/
    DEBUG_LOOP   yLOG_exit    (__FUNCTION__);
    return 0;
@@ -483,31 +533,31 @@ tty_openall        (void)
  *>       /+---(other stuff)-----------------+/                                        <* 
  *>       p = strtok (NULL,  " ");                                                     <* 
  *>       if (p == NULL) continue;                                                     <* 
- *>       p = strtok (NULL,  " ");                                                     <* 
- *>       if (p == NULL) continue;                                                     <* 
- *>       p = strtok (NULL,  " ");                                                     <* 
- *>       if (p == NULL) continue;                                                     <* 
- *>       p = strtok (NULL,  " ");                                                     <* 
- *>       if (p == NULL) continue;                                                     <* 
- *>       p = strtok (NULL,  " ");                                                     <* 
- *>       if (p == NULL) continue;                                                     <* 
- *>       /+---(dev)-------------------------+/                                        <* 
- *>       p = strtok (NULL,  " ");                                                     <* 
- *>       if (p == NULL) continue;                                                     <* 
- *>       str_trim (p);                                                                <* 
- *>       yLOG_info   ("tty"       , p);                                               <* 
- *>       tty_skip (p);                                                                <* 
- *>       /+---(next)-------------------------+/                                       <* 
- *>    }                                                                               <* 
- *>    /+---(close the file)-----------------+/                                        <* 
- *>    fclose (f);                                                                     <* 
- *>    /+---(complete)-----------------------+/                                        <* 
- *>    yLOG_exit   (__FUNCTION__);                                                     <* 
- *>    return 0;                                                                       <* 
- *> }                                                                                  <*/
+*>       p = strtok (NULL,  " ");                                                     <* 
+*>       if (p == NULL) continue;                                                     <* 
+*>       p = strtok (NULL,  " ");                                                     <* 
+*>       if (p == NULL) continue;                                                     <* 
+*>       p = strtok (NULL,  " ");                                                     <* 
+*>       if (p == NULL) continue;                                                     <* 
+*>       p = strtok (NULL,  " ");                                                     <* 
+*>       if (p == NULL) continue;                                                     <* 
+*>       /+---(dev)-------------------------+/                                        <* 
+*>       p = strtok (NULL,  " ");                                                     <* 
+*>       if (p == NULL) continue;                                                     <* 
+*>       str_trim (p);                                                                <* 
+*>       yLOG_info   ("tty"       , p);                                               <* 
+*>       tty_skip (p);                                                                <* 
+*>       /+---(next)-------------------------+/                                       <* 
+*>    }                                                                               <* 
+*>    /+---(close the file)-----------------+/                                        <* 
+*>    fclose (f);                                                                     <* 
+*>    /+---(complete)-----------------------+/                                        <* 
+*>    yLOG_exit   (__FUNCTION__);                                                     <* 
+*>    return 0;                                                                       <* 
+*> }                                                                                  <*/
 
 char             /* [------] find a running job by name ----------------------*/
-tty_review         (void)
+tty_review              (void)
 {
    /*---(locals)-----------+-----------+-*/
    DIR        *x_procdir   = NULL;
@@ -523,46 +573,78 @@ tty_review         (void)
    int         x_len       =    0;
    char        c           =    0;
    char        i           =    0;
+   /*---(begin)--------------------------*/
+   DEBUG_LOOP   yLOG_enter  (__FUNCTION__);
    /*---(preprare)-----------------------*/
-   for (i = 0; i < LEN_FIELD; ++i)   s_active [i] = '-';
+   for (i = 0; i < MAX_TTYS; ++i) {
+      s_active [i] = '-';
+      if (g_ttys [i].active == 'o')  g_ttys [i].active = TTY_UNUSED;
+   }
    /*---(open the proc system)-----------*/
    x_procdir = opendir ("/proc");
-   if (x_procdir == NULL) return -1;
+   DEBUG_LOOP   yLOG_point  ("x_procdir" , x_procdir);
+   if (x_procdir == NULL) {
+      DEBUG_LOOP   yLOG_exitr  (__FUNCTION__, -1);
+      return -1;
+   }
    /*---(cycle through the entries)------*/
    while (1)  {
       /*---(next process)----------------*/
       x_procden = readdir (x_procdir);
+      DEBUG_LOOP   yLOG_point  ("x_procden" , x_procden);
       if (x_procden == NULL)  break;
+      DEBUG_LOOP   yLOG_info   ("->d_name"  , x_procden->d_name);
       x_procnum = atoi (x_procden->d_name);
+      DEBUG_LOOP   yLOG_value  ("x_procnum" , x_procnum);
       if (x_procnum == 0)     continue;
       /*---(open fds)--------------------*/
       sprintf (x_fdname, "/proc/%s/fd", x_procden->d_name);
+      DEBUG_LOOP   yLOG_info   ("x_fdname"  , x_fdname);
       x_fddir = opendir (x_fdname);
+      DEBUG_LOOP   yLOG_point  ("x_fddir"   , x_fddir);
       if (x_fddir == NULL)    continue;
+      DEBUG_LOOP   yLOG_enter  (__FUNCTION__);
       while (1)  {
          /*---(next fd)------------------*/
          x_fdden = readdir (x_fddir);
+         DEBUG_LOOP   yLOG_point  ("x_fdden"   , x_fdden);
          if (x_fdden == NULL)    break;
+         DEBUG_LOOP   yLOG_info   ("->d_name"  , x_fdden->d_name);
          x_fdnum = atoi (x_fdden->d_name);
+         DEBUG_LOOP   yLOG_value  ("x_fdnum"   , x_fdnum);
          if (x_fdnum < 3)        continue;
          /*---(get link destination)-----*/
          sprintf (x_ttyname, "/proc/%s/fd/%s", x_procden->d_name, x_fdden->d_name);
+         DEBUG_LOOP   yLOG_info   ("x_ttyname" , x_ttyname);
          realpath (x_ttyname, x_tty);
          x_len = strlen (x_tty);
+         DEBUG_LOOP   yLOG_info   ("x_tty"     , x_tty);
          if (x_len <= 8)      continue;
          if (strncmp (x_tty, "/dev/tty", 8) != 0)  continue;
-         /*> printf ("%-20.20s   %s\n", x_ttyname, x_tty);                            <*/
          x_ttynum = atoi (x_tty + 8);
-         if (x_ttynum >= LEN_FIELD)   continue;
-         s_active [x_ttynum] = 'y';
-         /*---(reset waiting)------------*/
-         if (g_ttys [i].watched == TTY_WAITING)  g_ttys [i].watched == TTY_WATCHED;
+         if (x_ttynum >= MAX_TTYS)   continue;
+         /*---(display key data)---------*/
+         DEBUG_LOOP   yLOG_char   ("->valid"   , g_ttys [x_ttynum].valid);
+         DEBUG_LOOP   yLOG_char   ("->allowed" , g_ttys [x_ttynum].allowed);
+         DEBUG_LOOP   yLOG_char   ("->watched" , g_ttys [x_ttynum].watched);
+         DEBUG_LOOP   yLOG_char   ("->active"  , g_ttys [x_ttynum].active);
+         /*---(flag active)--------------*/
          ++c;
+         s_active [x_ttynum] = TTY_ACTIVE;
+         /*---(flag others)--------------*/
+         if (g_ttys [x_ttynum].allowed == TTY_BLOCKED) {
+            g_ttys [x_ttynum].active = TTY_OTHERS;
+         /*> } else {                                                                 <* 
+          *>    g_ttys [x_ttynum].active = TTY_ACTIVE;                                <*/
+         }
          /*---(done)---------------------*/
       }
+      DEBUG_LOOP   yLOG_exit   (__FUNCTION__);
       closedir (x_fddir);
    }
    closedir (x_procdir);
+   /*---(complete)-----------------------*/
+   DEBUG_LOOP   yLOG_exit   (__FUNCTION__);
    return c;
 }
 
@@ -587,14 +669,29 @@ tty__unit               (char *a_question, int a_num)
    /*---(prepare)------------------------*/
    strlcpy  (unit_answer, "TTY              : question not understood", LEN_RECD);
    /*---(crontab name)-------------------*/
+   if (a_num < 0 || a_num >= MAX_TTYS) {
+      snprintf (unit_answer, LEN_RECD, "TTY number  (%2d) : out of range", a_num);
+      return unit_answer;
+   }
+   /*---(questions)----------------------*/
    if      (strcmp (a_question, "stats"   )        == 0) {
       /*---(check device file)--------------*/
-      sprintf (t, "/dev/tty%d", a_num);
+      sprintf (t, g_ttys [a_num].device);
       rc = stat (t, &s);
       if (rc < 0) 
-         snprintf (unit_answer, LEN_RECD, "TTY stats        : %-15.15s  -     -     -  -------", t);
+         snprintf (unit_answer, LEN_RECD, "TTY stats   (%2d) : %-15.15s  -     -     -  -------", a_num, t);
       else {
-         snprintf (unit_answer, LEN_RECD, "TTY stats        : %-15.15s  y  %4d  %4d  %7.7o", t, s.st_uid, s.st_gid, s.st_mode);
+         snprintf (unit_answer, LEN_RECD, "TTY stats   (%2d) : %-15.15s  y  %4d  %4d  %7.7o", a_num, t, s.st_uid, s.st_gid, s.st_mode);
+      }
+   }
+   else if (strcmp (a_question, "flags"   )        == 0) {
+      /*---(check device file)--------------*/
+      sprintf (t, g_ttys [a_num].device);
+      rc = stat (t, &s);
+      if (rc < 0) 
+         snprintf (unit_answer, LEN_RECD, "TTY flags   (%2d) : %-15.15s  -  -  -  -  --  ------", a_num, t);
+      else {
+         snprintf (unit_answer, LEN_RECD, "TTY flags   (%2d) : %-15.15s  %c  %c  %c  %c  %2d  %6d", a_num, t, g_ttys [a_num].valid, g_ttys [a_num].allowed, g_ttys [a_num].watched, g_ttys [a_num].active, g_ttys [a_num].fd, g_ttys [a_num].rpid);
       }
    }
    else if (strcmp (a_question, "active"  )        == 0) {
@@ -604,4 +701,12 @@ tty__unit               (char *a_question, int a_num)
    return unit_answer;
 }
 
+char tty__unit_allowed (int a_tty)  { g_ttys [a_tty].allowed = TTY_ALLOWED; return 0; }
+char tty__unit_blocked (int a_tty)  { g_ttys [a_tty].allowed = TTY_BLOCKED; return 0; }
+
+char tty__unit_watched (int a_tty)  { g_ttys [a_tty].watched = TTY_WATCHED; return 0; }
+char tty__unit_ignored (int a_tty)  { g_ttys [a_tty].watched = TTY_IGNORED; return 0; }
+
+char tty__unit_active  (int a_tty)  { g_ttys [a_tty].active  = TTY_ACTIVE;  return 0; }
+char tty__unit_unused  (int a_tty)  { g_ttys [a_tty].active  = TTY_UNUSED;  return 0; }
 

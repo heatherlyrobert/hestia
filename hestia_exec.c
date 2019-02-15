@@ -30,80 +30,6 @@ exec_time               (long a_now)
    return my.now;
 }
 
-char
-exec_poll               (void)
-{
-   /*---(locals)-----------+-----+-----+-*/
-   char        rce         =  -10;
-   char        rc          =    0;
-   int         i           =    0;
-   int         x_stdin     = 0;
-   int         x_stdout    = 0;
-   int         x_stderr    = 0;
-   char        x_cmd       [LEN_RECD];
-   int         c           =    0;
-   /*---(header)-------------------------*/
-   DEBUG_LOOP   yLOG_enter   (__FUNCTION__);
-   /*---(polling)------------------------*/
-   rc = poll (g_polls, MAX_TTYS, 1);
-   DEBUG_LOOP   yLOG_value   ("poll"      , rc);
-   --rce;  if (rc <  0) {
-      DEBUG_LOOP   yLOG_note    ("poll call failed");
-      DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);
-      return rce;
-   }
-   /*---(walk thru ttys)-----------------*/
-   for (i = 0; i < MAX_TTYS; ++i) {
-      DEBUG_LOOP   yLOG_value   ("tty#"      , i);
-      /*---(check events)----------------*/
-      DEBUG_LOOP   yLOG_value   (".revents"  , g_polls [i].revents);
-      if (g_polls [i].revents  == 0)            continue;
-      /*---(filter)----------------------*/
-      DEBUG_LOOP   yLOG_char    (".allowed"  , g_ttys  [i].allowed);
-      if (g_ttys  [i].allowed  != TTY_ALLOWED)  continue;
-      DEBUG_LOOP   yLOG_char    (".watched"  , g_ttys  [i].watched);
-      if (g_ttys  [i].watched  != TTY_WATCHED)  continue;
-      DEBUG_LOOP   yLOG_char    (".active"   , g_ttys  [i].active);
-      if (g_ttys  [i].active   == TTY_ACTIVE)   continue;
-      /*---(prepare)---------------------*/
-      DEBUG_LOOP   yLOG_info    (".device"   , g_ttys [i].device);
-      g_ttys [i].active  = TTY_ACTIVE;
-      ++g_ttys [i].attempts;
-      /*---(save stdin,out,err)----------*/
-      DEBUG_LOOP   yLOG_note    ("save off stdin, stdout, stderr");
-      dup2 (0, x_stdin);
-      dup2 (1, x_stdout);
-      dup2 (2, x_stderr);
-      /*---(set to device)---------------*/
-      DEBUG_LOOP   yLOG_note    ("set stdin, stdout, stderr to device");
-      dup2 (g_polls [i].fd, 0);
-      dup2 (g_polls [i].fd, 1);
-      dup2 (g_polls [i].fd, 2);
-      /*---(launch)----------------------*/
-      sprintf (x_cmd, "/sbin/hearth --external %-12.12s --cluster %d --hostname %s", g_ttys[i].device, rand() % 10, g_ttys [i].host_name);
-      DEBUG_LOOP   yLOG_info    ("x_cmd"     , x_cmd);
-      g_ttys [i].rpid = yEXEC_run (g_ttys [i].device, "root", x_cmd, YEXEC_BASH, YEXEC_FULL, YEXEC_FORK, EXEC_FILE);
-      DEBUG_LOOP   yLOG_value   (".rpid"     , g_ttys [i].rpid);
-      if (g_ttys [i].rpid < 0) {
-         DEBUG_LOOP   yLOG_note    ("LAUNCH FAILED");
-      }
-      /*---(restore stdin,out,err)-------*/
-      DEBUG_LOOP   yLOG_note    ("restore stdin, stdout, stderr");
-      dup2 (x_stdin , 0);
-      dup2 (x_stdout, 1);
-      dup2 (x_stderr, 2);
-      /*---(wrap)------------------------*/
-      DEBUG_LOOP   yLOG_note    ("launch complete");
-      ++c;
-      /*---(done)------------------------*/
-   }
-   /*---(summary)------------------------*/
-   DEBUG_LOOP   yLOG_value   ("c"         , c);
-   /*---(complete)-----------------------*/
-   DEBUG_LOOP   yLOG_exit    (__FUNCTION__);
-   return c;
-}
-
 int
 exec_check              (void)
 {
@@ -164,6 +90,84 @@ exec_check              (void)
    }
    /*---(complete)-----------------------*/
    DEBUG_LOOP  yLOG_exit    (__FUNCTION__);
+   return c;
+}
+
+char
+exec_poll               (void)
+{
+   /*---(locals)-----------+-----+-----+-*/
+   char        rce         =  -10;
+   char        rc          =    0;
+   int         i           =    0;
+   int         x_stdin     = 0;
+   int         x_stdout    = 0;
+   int         x_stderr    = 0;
+   char        x_cmd       [LEN_RECD];
+   int         c           =    0;
+   /*---(header)-------------------------*/
+   DEBUG_LOOP   yLOG_enter   (__FUNCTION__);
+   /*---(polling)------------------------*/
+   rc = poll (g_polls, MAX_TTYS, 1);
+   DEBUG_LOOP   yLOG_value   ("poll"      , rc);
+   --rce;  if (rc <  0) {
+      DEBUG_LOOP   yLOG_note    ("poll call failed");
+      DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);
+      return rce;
+   }
+   /*---(walk thru ttys)-----------------*/
+   for (i = 0; i < MAX_TTYS; ++i) {
+      DEBUG_LOOP   yLOG_value   ("tty#"      , i);
+      /*---(check events)----------------*/
+      DEBUG_LOOP   yLOG_value   (".revents"  , g_polls [i].revents);
+      if (g_polls [i].revents  == 0)            continue;
+      /*---(filter)----------------------*/
+      DEBUG_LOOP   yLOG_char    (".allowed"  , g_ttys  [i].allowed);
+      if (g_ttys  [i].allowed  != TTY_ALLOWED)  continue;
+      DEBUG_LOOP   yLOG_char    (".watched"  , g_ttys  [i].watched);
+      if (g_ttys  [i].watched  != TTY_WATCHED)  continue;
+      DEBUG_LOOP   yLOG_char    (".active"   , g_ttys  [i].active);
+      if (g_ttys  [i].active   == TTY_ACTIVE)   continue;
+      /*---(prepare)---------------------*/
+      DEBUG_LOOP   yLOG_info    (".device"   , g_ttys [i].device);
+      g_ttys [i].active  = TTY_ACTIVE;
+      ++g_ttys [i].attempts;
+      /*---(save stdin,out,err)----------*/
+      DEBUG_LOOP   yLOG_note    ("save off stdin, stdout, stderr");
+      dup2 (0, x_stdin);
+      dup2 (1, x_stdout);
+      dup2 (2, x_stderr);
+      /*---(set to device)---------------*/
+      DEBUG_LOOP   yLOG_note    ("set stdin, stdout, stderr to device");
+      dup2 (g_polls [i].fd, 0);
+      dup2 (g_polls [i].fd, 1);
+      dup2 (g_polls [i].fd, 2);
+      /*---(launch)----------------------*/
+      if (my.user_mode == MODE_DAEMON) {
+         sprintf (x_cmd, "/sbin/hearth --external %-12.12s --cluster %d --hostname %s", g_ttys[i].device, g_ttys[i].cluster, g_ttys [i].host_name);
+      } else {
+         sprintf (x_cmd, "/bin/sleep 2");
+      }
+      DEBUG_LOOP   yLOG_info    ("x_cmd"     , x_cmd);
+      g_ttys [i].rpid = yEXEC_run (g_ttys [i].device, "root", x_cmd, YEXEC_BASH, YEXEC_FULL, YEXEC_FORK, EXEC_FILE);
+      DEBUG_LOOP   yLOG_value   (".rpid"     , g_ttys [i].rpid);
+      if (g_ttys [i].rpid < 0) {
+         DEBUG_LOOP   yLOG_note    ("LAUNCH FAILED");
+      }
+      /*---(restore stdin,out,err)-------*/
+      DEBUG_LOOP   yLOG_note    ("restore stdin, stdout, stderr");
+      dup2 (x_stdin , 0);
+      dup2 (x_stdout, 1);
+      dup2 (x_stderr, 2);
+      /*---(wrap)------------------------*/
+      DEBUG_LOOP   yLOG_note    ("launch complete");
+      ++c;
+      /*---(done)------------------------*/
+   }
+   /*---(summary)------------------------*/
+   DEBUG_LOOP   yLOG_value   ("c"         , c);
+   /*---(complete)-----------------------*/
+   DEBUG_LOOP   yLOG_exit    (__FUNCTION__);
    return c;
 }
 

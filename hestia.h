@@ -7,7 +7,7 @@
 
 #define     P_FOCUS     "SA (system administration)"
 #define     P_NICHE     "au (authentication)"
-#define     P_PURPOSE   "simple, reliable, experimental, and secure getty terminal daemon"
+#define     P_PURPOSE   "simple, experimental, and transparent getty terminal daemon"
 
 #define     P_NAMESAKE  "hestia-polyolbos (full of blessings)"
 #define     P_HERITAGE  "virgin goddess of hearth, home, architecture, and eternal flame"
@@ -21,22 +21,30 @@
 #define     P_CREATED   "2012-01"
 #define     P_DEPENDS   "yEXEC, ySEC, ySTR, yPARSE"
 
-#define     P_VERNUM    "1.0c"
-#define     P_VERTXT    "fully updated with debugging and ready for bigger testing"
+#define     P_VERNUM    "1.0d"
+#define     P_VERTXT    "tty functions valid, open, close, review, init, and wrap are unit tested"
 
 #define     P_USAGE     "hestia [OPTIONS]"
 #define     P_DEBUG     "hestia_debug [URGENTS] [OPTIONS]"
 
 #define     P_SUMMARY   \
- "hestia is a simple, reliable, experimental, and secure getty terminal daemon¦" \
- "that monitors a select set of physical and virtual devices for activity¦" \
- "and spawns a login cycle for newly active ones.¦"
+ "hestia is a simple, experimental, and transparent getty terminal daemon¦" \
+ "that monitors a select set of virtual tty devices for activity, if found,¦" \
+ "it spawns a login cycle (hearth) for the newly active ones.¦"
 
 #define     P_PRIORITY  "direct, simple, brief, vigorous, and lucid (h.w. fowler)"
-#define     P_SAYING    "[grow a set] and build your wings on the way down (bradbury)"
+#define     P_PRINCIPAL "[grow a set] and build your wings on the way down (r. bradbury)"
 
 #define     P_ALTERNS   "getty, agetty, mingetty, ngetty, mgetty, fbgetty, ..."
-#define     P_REMINDER  "there are many better options, but i *own* this top-to-bottom"
+#define     P_REMINDER  "there are many better options, but i *own* every line of this one"
+
+#define     P_ASSUME    \
+ "-- no remote hosts (disallow -H <host_name>)¦" \
+ "-- only virtual ttys (no modem, serial line, fax, voice, framebuffer)¦" \
+ "-- no alternate login programs (disallow -l <login_program>)¦" \
+ "-- only vt102 terminals (console, xterm, eterm, etc)¦" \
+ "-- no issue or alternate issuse (disallow /etc/issue or -f <issue_file>)¦" \
+ "-- no relationship to, or use of, /etc/inittab, /etc/ttys, /etc/gettdefs¦"
 
 /*345678901-12345678901-123456789-123456789-123456789-123456789-123456789-123456789-123456789-*/
 
@@ -197,13 +205,19 @@ typedef struct dirent    tDIRENT;
 extern  char          unit_answer [LEN_RECD];
 
 
-#define     K_RETURN      10
-#define     K_ESCAPE      27
-#define     K_BS         127
-#define     K_SPACE       32
+#define     MODE_VERIFY      'v'
+#define     MODE_DAEMON      'd'
+#define     MODE_NORMAL      'n'
+#define     MODE_UNIT        'u'
+#define     MODE_VALID       "vdnu"
 
+
+/*345678901-12345678901-12345678901-12345678901-12345678901-12345678901-123456*/
 struct cACCESSOR
 {
+   /*---(behavior)-------------*/
+   char        prog_name   [LEN_PATH];      /* name of running program        */
+   char        user_mode;                   /* validate, daemon, or unit      */
    /*---(owner)----------------*/
    int         uid;                         /* uid of person who launched eos */
    char        who         [LEN_LABEL];     /* user name who launched eos     */
@@ -216,7 +230,7 @@ struct cACCESSOR
    char        name_conf   [LEN_RECD];      /* name of configuration file     */
    char        name_exec   [LEN_RECD];      /* name of execution detail file  */
    char        name_status [LEN_RECD];      /* name of status file            */
-   char        name_heartbeat [LEN_PATH]; /* pulser file name                        */
+   char        name_heartbeat [LEN_PATH];   /* pulser file name               */
    /*---(done)------------------*/
 } my;
 
@@ -287,7 +301,7 @@ tTITLES     titles      [30];
 
 
 /*345678901-12345678901-12345678901-12345678901-12345678901-12345678901-123456*/
-#define     MAX_TTYS       40
+#define     MAX_TTYS       50
 /*---(statuses)--------------*/
 #define     TTY_VALID      'y'
 #define     TTY_INVALID    '-'
@@ -295,6 +309,7 @@ tTITLES     titles      [30];
 #define     TTY_BLOCKED    '-'
 #define     TTY_WATCHED    'y'
 #define     TTY_WAITING    'W'
+#define     TTY_OTHERS     'o'
 #define     TTY_IGNORED    '-'
 #define     TTY_ACTIVE     'y'
 #define     TTY_UNUSED     '-'
@@ -362,14 +377,22 @@ char        prog__unit_quiet        (void);
 char        prog__unit_loud         (void);
 char        prog__unit_end          (void);
 
+char        base_config             (void);
 
 char        tty_valid               (char *a_name);
 char        tty_init                (void);
+char        tty_wrap                (void);
 char        tty_open                (int a_tty);
 char        tty_close               (int a_tty);
 char        tty_display             (int a_num);
 char        tty_review              (void);
 char*       tty__unit               (char *a_question, int a_num);
+char        tty__unit_allowed       (int a_tty);
+char        tty__unit_blocked       (int a_tty);
+char        tty__unit_watched       (int a_tty);
+char        tty__unit_ignored       (int a_tty);
+char        tty__unit_active        (int a_tty);
+char        tty__unit_unused        (int a_tty);
 
 long        exec_time               (long a_now);
 char        exec_poll               (void);
@@ -377,6 +400,7 @@ char        exec_poll               (void);
 char        poller                  (void);
 
 char        rptg_heartbeat          (void);
+char        rptg_ttys               (void);
 
      
 int         audit_find         (char *a_dev, int  a_pid, int *a_pos);

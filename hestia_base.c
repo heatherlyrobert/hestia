@@ -80,7 +80,7 @@ char g_hosts [MAX_HOST][LEN_LABEL] = {
    "umko",
    "wildcat",
    "crazy_bishop",
-   "___end_of_engines___",
+   "---end-of-list-----",
 };
 int        g_nhost  = 0;
 
@@ -188,11 +188,19 @@ base_config             (void)
          DEBUG_INPT   yLOG_note    ("tty number not 0 to MAX_TTY");
          continue;
       }
-      /*---(populate)--------------------*/
-      if (strcmp (x_status, "on") == 0)        g_ttys [x_tty].allowed = TTY_ALLOWED;
-      else                                     g_ttys [x_tty].allowed = TTY_BLOCKED;
-      if (strcmp (x_style , "complex") == 0)   g_ttys [x_tty].style   = TTY_COMPLEX;
-      else                                     g_ttys [x_tty].style   = TTY_STANDARD;
+      /*---(validity)--------------------*/
+      if (strcmp (x_status, "on") == 0 && g_ttys [x_tty].valid == TTY_VALID) {
+         g_ttys [x_tty].allowed = TTY_ALLOWED;
+      } else {
+         g_ttys [x_tty].allowed = TTY_BLOCKED;
+      }
+      /*---(style)-----------------------*/
+      if (strcmp (x_style , "complex") == 0) {
+         g_ttys [x_tty].style   = TTY_COMPLEX;
+      } else {
+         g_ttys [x_tty].style   = TTY_STANDARD;
+      }
+      /*---(next)------------------------*/
       ++c;
       /*---(done)------------------------*/
    }
