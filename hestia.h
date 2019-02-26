@@ -21,8 +21,8 @@
 #define     P_CREATED   "2012-01"
 #define     P_DEPENDS   "yEXEC, ySEC, ySTR, yPARSE"
 
-#define     P_VERNUM    "1.0e"
-#define     P_VERTXT    "base_config has a unit test now, made sure it has good defaults"
+#define     P_VERNUM    "1.0f"
+#define     P_VERTXT    "getting hearth to call properly"
 
 #define     P_USAGE     "hestia [OPTIONS]"
 #define     P_DEBUG     "hestia_debug [URGENTS] [OPTIONS]"
@@ -184,7 +184,6 @@
 #include    <dirent.h>
 
 
-#include    <ncurses.h>                /* XSI_STD   cursor optimization       */
 
 #include    <pwd.h>                    /* LINUX     password access           */
 #include    <shadow.h>                 /* LINIX     password shadow access    */
@@ -201,6 +200,7 @@ typedef struct stat      tSTAT;
 typedef struct passwd    tPASSWD;
 typedef struct spwd      tSHADOW;
 typedef struct dirent    tDIRENT;
+typedef struct termios   tTERMIOS;
 
 extern  char          unit_answer [LEN_RECD];
 
@@ -225,7 +225,7 @@ struct cACCESSOR
    int         ppid;                        /* parent process id of eos       */
    /*---(time)-----------------*/
    long        now;                         /* current epoch                  */
-   char        heartbeat   [LEN_FIELD];     /* latest heartbeat               */
+   char        heartbeat   [LEN_HUND];      /* latest heartbeat               */
    /*---(files)----------------*/
    char        name_conf   [LEN_RECD];      /* name of configuration file     */
    char        name_exec   [LEN_RECD];      /* name of execution detail file  */
@@ -301,7 +301,7 @@ tTITLES     titles      [30];
 
 
 /*345678901-12345678901-12345678901-12345678901-12345678901-12345678901-123456*/
-#define     MAX_TTYS       50
+#define     MAX_TTYS       40
 /*---(statuses)--------------*/
 #define     TTY_VALID      'y'
 #define     TTY_INVALID    '-'
@@ -327,8 +327,9 @@ struct   cTTY {
    char        device      [LEN_LABEL];         /* full device path           */
    char        style;                           /* style for login screen     */
    /*---(host)-----------------*/
+   int         language;                        /* language number            */
    int         cluster;                         /* cluster number             */
-   int         host_num;                        /* host number                */
+   int         host;                            /* host number                */
    char        host_name   [LEN_DESC];          /* full host name             */
    /*---(flags)----------------*/
    char        valid;                           /* exist                      */
@@ -337,6 +338,7 @@ struct   cTTY {
    char        active;                          /* whether it is active       */
    /*---(working)--------------*/
    int         fd;                              /* current file descriptor    */
+   tTERMIOS    original;                        /* original termios flags     */
    int         rpid;                            /* current running job        */
    /*---(stats)----------------*/
    int         attempts;                        /* number of times launched   */
@@ -385,6 +387,7 @@ char        tty_wrap                (void);
 char        tty_open                (int a_tty);
 char        tty_close               (int a_tty);
 char        tty_display             (int a_num);
+char        tty_openall             (void);
 char        tty_review              (void);
 char*       tty__unit               (char *a_question, int a_num);
 char        tty__unit_allowed       (int a_tty);
@@ -396,7 +399,9 @@ char        tty__unit_unused        (int a_tty);
 
 long        exec_time               (long a_now);
 char        exec_poll               (void);
+char        exec_loop               (void);
 char*       exec__unit              (char *a_question, int a_num);
+char        exec__unit_ping         (int a_tty);
 
 char        poller                  (void);
 

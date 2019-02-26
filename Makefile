@@ -6,7 +6,7 @@
 # basename of executable, header, and all code files
 NAME_BASE  = hestia
 # additional standard and outside libraries
-LIB_STD    = -lncurses -lcrypt -lm
+LIB_STD    = -lcrypt -lm
 # all heatherly libraries used, debug versions whenever available
 LIB_MINE   = -lyEXEC_debug -lySEC -lySTR_debug -lyPARSE_debug
 # directory for production code, no trailing slash

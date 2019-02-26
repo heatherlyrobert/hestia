@@ -54,10 +54,9 @@ rptg_ttys               (void)
    for (i = 0; i < MAX_TTYS; ++i) {
       DEBUG_RPTG   yLOG_value   ("tty#"      , i);
       DEBUG_RPTG   yLOG_complex ("g_ttys"    , "%2d %-12.12s %c %c %c %c", i, g_ttys [i].device, g_ttys [i].valid, g_ttys [i].allowed, g_ttys [i].watched, g_ttys [i].active);
-      printf ("%2d %-6.6s %-11.11s %2d %2d %-20.20s %c",
-            i, g_ttys [i].name  , g_ttys [i].device,
-            g_ttys [i].cluster  , g_ttys [i].host_num,
-            g_ttys [i].host_name, g_ttys [i].style);
+      printf ("%2d %-6.6s %-11.11s %2d %2d %2d %c",
+            i, g_ttys [i].name  , g_ttys [i].device, g_ttys [i].language,
+            g_ttys [i].cluster  , g_ttys [i].host  , g_ttys [i].style);
       printf ("   %c %c %c %c   %2d %6d",
             g_ttys [i].valid, g_ttys [i].allowed, g_ttys [i].watched, g_ttys [i].active,
             g_ttys [i].fd, g_ttys [i].rpid);
@@ -90,7 +89,7 @@ rptg__unit_heartbeat   (char *a_heartbeat)
       return rce;
    }
    /*---(write)--------------------------*/
-   fgets (a_heartbeat, LEN_FIELD, f);
+   fgets (a_heartbeat, LEN_HUND, f);
    DEBUG_RPTG   yLOG_info    ("heartbeat" , a_heartbeat);
    /*---(close)--------------------------*/
    rc = fclose (f);
@@ -111,7 +110,7 @@ rptg__unit              (char *a_question, int a_num)
    /*---(locals)-----------+-----+-----+-*/
    char        rce         =  -10;
    int         rc          =    0;
-   char        x_heartbeat [LEN_FIELD];
+   char        x_heartbeat [LEN_HUND];
    /*---(prepare)------------------------*/
    strlcpy  (unit_answer, "RPTG             : question not understood", LEN_RECD);
    /*---(crontab name)-------------------*/

@@ -329,8 +329,8 @@ PROG_daemon        (void)
       return rce;
    }
    /*---(fork off and die)---------------*/
-   DEBUG_ENVI   yLOG_value   ("logger"    , yURG_debug.logger);
-   rc = yEXEC_daemon (yURG_debug.logger, &my.pid);
+   DEBUG_ENVI   yLOG_value   ("logger"    , yURG_lognum ());
+   rc = yEXEC_daemon (yURG_lognum (), &my.pid);
    DEBUG_ENVI   yLOG_value   ("daemon"    , rc);
    --rce;  if (rc < 0) {
       printf ("hestia could not be daemonized\n");
@@ -339,7 +339,7 @@ PROG_daemon        (void)
       return rce;
    }
    /*---(signals)-------------------------------*/
-   yEXEC_signal (YEXEC_SOFT, YEXEC_YES, YEXEC_YES, PROG_comm);
+   /*> yEXEC_signal (YEXEC_SOFT, YEXEC_YES, YEXEC_NO, PROG_comm);                     <*/
    DEBUG_ENVI   yLOG_value   ("signals"   , rc);
    --rce;  if (rc < 0) {
       printf ("hestia sigals could not be set properly\n");

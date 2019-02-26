@@ -10,9 +10,6 @@ main               (int a_argc, char *a_argv[])
    /*---(locals)-----------+-----+-----+-*/
    char        rce         =  -10;
    char        rc          =    0;
-
-
-
    /*---(standard startup)---------------*/
    if (rc >= 0)  rc = PROG_preinit ();
    if (rc >= 0)  rc = yURG_logger  (a_argc, a_argv);
@@ -28,19 +25,17 @@ main               (int a_argc, char *a_argv[])
    switch (my.user_mode) {
    case MODE_DAEMON :
       rc = PROG_daemon  ();
-      /*> rc = poller       ();                                                       <*/
+      DEBUG_TOPS   yLOG_value   ("daemon"    , rc);
+      rc = tty_openall ();
+      DEBUG_TOPS   yLOG_value   ("openall"   , rc);
+      rc = exec_loop    ();
+      DEBUG_TOPS   yLOG_value   ("loop"      , rc);
       break;
    case MODE_VERIFY :
    default          :
       rc = rptg_ttys   ();
       break;
    }
-   /*---(prepare)------------------------*/
-   /*> if (rc == 0)  rc = conf_open    ();                                            <* 
-    *> if (rc == 0)  rc = conf_read    ();                                            <* 
-    *> if (rc == 0)  rc = conf_close   ();                                            <* 
-    *> if (rc == 0)  rc = tty_existing ();                                            <* 
-    *> if (rc == 0)  rc = tty_openall  ();                                            <*/
    /*---(done)---------------------------*/
    rc = PROG_end     ();
    /*---(complete)-----------------------*/

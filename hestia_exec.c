@@ -4,7 +4,7 @@
 
 /*345678901-12345678901-12345678901-12345678901-12345678901-12345678901-123456*/
 tPOLL       g_polls     [MAX_TTYS];
-
+tPOLL       test_poll   [1];
 
 /*====================------------------------------------====================*/
 /*===----                           drivers                            ----===*/
@@ -79,9 +79,13 @@ exec_check              (void)
          ++g_ttys [i].failures;
          break;
       }
+      /*---(clear existing in/out)----------*/
+      rc = tcflush (g_ttys [i].fd, TCIOFLUSH);  /* flush both input/output */
+      DEBUG_LOOP   yLOG_value   ("flush"     , rc);
       /*---(reset run data)--------------*/
       g_ttys [i].rpid   = -1;
       g_ttys [i].active = TTY_UNUSED;
+      tty_display (i);
       /*> tty_close (i);                                                              <*/
       /*> tty_open  (i);                                                              <*/
       ++c;
@@ -115,21 +119,38 @@ exec_poll               (void)
       DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);
       return rce;
    }
+   if (rc ==  0) {
+      DEBUG_LOOP   yLOG_note    ("no ttys registered input available");
+      DEBUG_LOOP   yLOG_exit    (__FUNCTION__);
+      return 0;
+   }
    /*---(walk thru ttys)-----------------*/
    for (i = 0; i < MAX_TTYS; ++i) {
-      DEBUG_LOOP   yLOG_value   ("tty#"      , i);
+      DEBUG_LOOP   yLOG_complex ("tty#"      , "%2d, %-12.12s, %2d=%2d %2d %2d, %c %c %c %c", i, g_ttys [i].device, g_ttys [i].fd, g_polls [i].fd, g_polls [i].events, g_polls [i].revents, g_ttys [i].valid, g_ttys [i].allowed, g_ttys [i].watched, g_ttys [i].active);
       /*---(check events)----------------*/
-      DEBUG_LOOP   yLOG_value   (".revents"  , g_polls [i].revents);
-      if (g_polls [i].revents  == 0)            continue;
+      switch (g_polls [i].revents) {
+      case    0     :
+         DEBUG_LOOP   yLOG_note    ("no events on this tty");
+         continue;
+         break;
+      case POLLNVAL :
+         DEBUG_LOOP   yLOG_note    ("fd is not open");
+         continue;
+         break;
+      case POLLHUP  :
+         DEBUG_LOOP   yLOG_note    ("requested read when write end is closed");
+         continue;
+         break;
+      case POLLERR  :
+         DEBUG_LOOP   yLOG_note    ("requested write when read end is closed");
+         continue;
+         break;
+      }
       /*---(filter)----------------------*/
-      DEBUG_LOOP   yLOG_char    (".allowed"  , g_ttys  [i].allowed);
       if (g_ttys  [i].allowed  != TTY_ALLOWED)  continue;
-      DEBUG_LOOP   yLOG_char    (".watched"  , g_ttys  [i].watched);
       if (g_ttys  [i].watched  != TTY_WATCHED)  continue;
-      DEBUG_LOOP   yLOG_char    (".active"   , g_ttys  [i].active);
       if (g_ttys  [i].active   == TTY_ACTIVE)   continue;
       /*---(prepare)---------------------*/
-      DEBUG_LOOP   yLOG_info    (".device"   , g_ttys [i].device);
       g_ttys [i].active  = TTY_ACTIVE;
       ++g_ttys [i].attempts;
       /*---(save stdin,out,err)----------*/
@@ -143,10 +164,12 @@ exec_poll               (void)
       dup2 (g_polls [i].fd, 1);
       dup2 (g_polls [i].fd, 2);
       /*---(launch)----------------------*/
+      /*> DEBUG_LOOP  yLOG_value   ("input"     , fgetc (stdin));                     <*/
       if (my.user_mode == MODE_DAEMON) {
-         sprintf (x_cmd, "/sbin/hearth --external %-12.12s --cluster %d --hostname %s", g_ttys[i].device, g_ttys[i].cluster, g_ttys [i].host_name);
+         sprintf (x_cmd, "/sbin/hearth_debug @@kitchen --language %d --cluster %d --host %d %s", g_ttys[i].language, g_ttys[i].cluster, g_ttys [i].host, g_ttys[i].device);
+         /*> sprintf (x_cmd, "/sbin/hearth --language %d --cluster %d --host %d %s", g_ttys[i].language, g_ttys[i].cluster, g_ttys [i].host, g_ttys[i].device);   <*/
       } else {
-         sprintf (x_cmd, "/bin/sleep 2");
+         sprintf (x_cmd, "/bin/sleep %d", i / 10);
       }
       DEBUG_LOOP   yLOG_info    ("x_cmd"     , x_cmd);
       g_ttys [i].rpid = yEXEC_run (g_ttys [i].device, "root", x_cmd, YEXEC_BASH, YEXEC_FULL, YEXEC_FORK, EXEC_FILE);
@@ -169,6 +192,21 @@ exec_poll               (void)
    /*---(complete)-----------------------*/
    DEBUG_LOOP   yLOG_exit    (__FUNCTION__);
    return c;
+}
+
+char
+exec_loop              (void)
+{
+   char        rc          =    0;
+   while (1) {
+      rc = tty_review ();
+      if (rc < 0)  return rc;
+      rc = exec_check ();
+      if (rc < 0)  return rc;
+      rc = exec_poll  ();
+      if (rc < 0)  return rc;
+      sleep (1);
+   }
 }
 
 
@@ -243,54 +281,54 @@ exec_poll               (void)
  *>             yLOG_value  ("check rcc"  , rcc);                                                                                                       <* 
  *>             if (rcc == 0) {                                                                                                                         <* 
  *>                yLOG_info   ("completed" , g_ttys [i].full);                                                                                         <* 
- *>                ++g_ttys [i].complete;                                                                                                               <* 
- *>                g_ttys [i].active  = '-';                                                                                                            <* 
- *>                g_ttys [i].rpid    =  0 ;                                                                                                            <* 
- *>                close(g_ttys [i].full);                                                                                                              <* 
- *>                tty_open (i);                                                                                                                        <* 
- *>             }                                                                                                                                       <* 
- *>             if (rcc <  0) {                                                                                                                         <* 
- *>                yLOG_info   ("failed"    , g_ttys [i].full);                                                                                         <* 
- *>                ++g_ttys [i].failure;                                                                                                                <* 
- *>                g_ttys [i].active  = TTY_UNUSED;                                                                                                     <* 
- *>                g_ttys [i].rpid    =  0 ;                                                                                                            <* 
- *>                close(g_ttys [i].full);                                                                                                              <* 
- *>                tty_open (i);                                                                                                                        <* 
- *>             }                                                                                                                                       <* 
- *>          } else if (g_ttys [i].watched == 'B') {                                                                                                    <* 
- *>             rcc = tty_parse (g_ttys [i].full);                                                                                                      <* 
- *>             if (rcc == -1) {                                                                                                                        <* 
- *>                g_ttys [i].watched = TTY_WATCHED;                                                                                                    <* 
- *>                g_ttys [i].active  = TTY_UNUSED;                                                                                                     <* 
- *>                g_ttys [i].rpid    =  0 ;                                                                                                            <* 
- *>                tty_open (i);                                                                                                                        <* 
- *>             }                                                                                                                                       <* 
- *>          }                                                                                                                                          <* 
- *>          if (fs != NULL) {                                                                                                                          <* 
- *>             fprintf (fs, "%-10.10s  %-20.20s   %c     %c     %c   %5d  %5d  %5d  %5d\n",                                                            <* 
- *>                   g_ttys [i].name, g_ttys [i].full,                                                                                                 <* 
- *>                   g_ttys [i].allowed, g_ttys [i].watched, g_ttys [i].active,                                                                        <* 
- *>                   g_ttys [i].rpid, g_ttys [i].attempts, g_ttys [i].complete, g_ttys [i].failure);                                                   <* 
- *>          }                                                                                                                                          <* 
- *>       }                                                                                                                                             <* 
- *>       if (fs != NULL)  fclose (fs);                                                                                                                 <* 
- *>       /+---(trim log)--------------------+/                                                                                                         <* 
- *>       if ((count %  30) == 0)  yLOG_sync();                                                                                                         <* 
- *>       /+---(prepare for next cycle)------+/                                                                                                         <* 
- *>       ++count;                                                                                                                                      <* 
- *>    }                                                                                                                                                <* 
- *>    /+---(complete)-----------------------+/                                                                                                         <* 
- *>    DEBUG_LOOP   yLOG_exit    (__FUNCTION__);                                                                                                        <* 
- *>    return   0;                                                                                                                                      <* 
- *> }                                                                                                                                                   <*/
+*>                ++g_ttys [i].complete;                                                                                                               <* 
+*>                g_ttys [i].active  = '-';                                                                                                            <* 
+*>                g_ttys [i].rpid    =  0 ;                                                                                                            <* 
+*>                close(g_ttys [i].full);                                                                                                              <* 
+*>                tty_open (i);                                                                                                                        <* 
+*>             }                                                                                                                                       <* 
+*>             if (rcc <  0) {                                                                                                                         <* 
+   *>                yLOG_info   ("failed"    , g_ttys [i].full);                                                                                         <* 
+      *>                ++g_ttys [i].failure;                                                                                                                <* 
+      *>                g_ttys [i].active  = TTY_UNUSED;                                                                                                     <* 
+      *>                g_ttys [i].rpid    =  0 ;                                                                                                            <* 
+      *>                close(g_ttys [i].full);                                                                                                              <* 
+      *>                tty_open (i);                                                                                                                        <* 
+      *>             }                                                                                                                                       <* 
+      *>          } else if (g_ttys [i].watched == 'B') {                                                                                                    <* 
+         *>             rcc = tty_parse (g_ttys [i].full);                                                                                                      <* 
+            *>             if (rcc == -1) {                                                                                                                        <* 
+               *>                g_ttys [i].watched = TTY_WATCHED;                                                                                                    <* 
+                  *>                g_ttys [i].active  = TTY_UNUSED;                                                                                                     <* 
+                  *>                g_ttys [i].rpid    =  0 ;                                                                                                            <* 
+                  *>                tty_open (i);                                                                                                                        <* 
+                  *>             }                                                                                                                                       <* 
+                  *>          }                                                                                                                                          <* 
+                  *>          if (fs != NULL) {                                                                                                                          <* 
+                     *>             fprintf (fs, "%-10.10s  %-20.20s   %c     %c     %c   %5d  %5d  %5d  %5d\n",                                                            <* 
+                           *>                   g_ttys [i].name, g_ttys [i].full,                                                                                                 <* 
+                           *>                   g_ttys [i].allowed, g_ttys [i].watched, g_ttys [i].active,                                                                        <* 
+                           *>                   g_ttys [i].rpid, g_ttys [i].attempts, g_ttys [i].complete, g_ttys [i].failure);                                                   <* 
+                        *>          }                                                                                                                                          <* 
+                        *>       }                                                                                                                                             <* 
+                        *>       if (fs != NULL)  fclose (fs);                                                                                                                 <* 
+                        *>       /+---(trim log)--------------------+/                                                                                                         <* 
+                        *>       if ((count %  30) == 0)  yLOG_sync();                                                                                                         <* 
+                        *>       /+---(prepare for next cycle)------+/                                                                                                         <* 
+                        *>       ++count;                                                                                                                                      <* 
+                        *>    }                                                                                                                                                <* 
+                        *>    /+---(complete)-----------------------+/                                                                                                         <* 
+                        *>    DEBUG_LOOP   yLOG_exit    (__FUNCTION__);                                                                                                        <* 
+                        *>    return   0;                                                                                                                                      <* 
+                        *> }                                                                                                                                                   <*/
 
 
 
 
-/*====================------------------------------------====================*/
-/*===----                      unit test accessor                      ----===*/
-/*====================------------------------------------====================*/
-static void      o___UNITTEST________________o (void) {;}
+                        /*====================------------------------------------====================*/
+                        /*===----                      unit test accessor                      ----===*/
+                        /*====================------------------------------------====================*/
+                        static void      o___UNITTEST________________o (void) {;}
 
 char*            /*--> unit test accessor ------------------------------*/
 exec__unit              (char *a_question, int a_num)
@@ -308,4 +346,75 @@ exec__unit              (char *a_question, int a_num)
    return unit_answer;
 }
 
+char
+exec__unit_ping         (int a_tty)
+{
+   /*---(locals)-----------+-----+-----+-*/
+   char        rce         =  -10;
+   char        rc          =    0;
+   FILE       *f           = NULL;
+   int         x_fd        =   -1;
+   char        x_msg       [LEN_RECD];
+   int         i           =    0;
+   /*---(header)-------------------------*/
+   DEBUG_LOOP  yLOG_enter   (__FUNCTION__);
+   /*> sprintf (x_msg, "echo \"ping\n\" > /dev/tty%d", a_tty);                        <* 
+    *> system (x_msg);                                                                <*/
+   /*---(open)---------------------------*/
+   f = fopen (g_ttys [a_tty].device, "rt");
+   DEBUG_LOOP   yLOG_point   ("f"         , f);
+   --rce;  if (f == NULL) {
+      DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);
+      return rce;
+   }
+   strcpy (x_msg, "ping\n");
+   for (i = strlen (x_msg) - 1; i >= 0; --i) {
+      ungetc (x_msg [i], f);
+   }
+   /*> x_fd = open (g_ttys [a_tty].device, O_WRONLY | O_NOCTTY);                      <* 
+    *> DEBUG_LOOP   yLOG_value   ("x_fd"      , x_fd);                                <* 
+    *> --rce;  if (x_fd <  0) {                                                       <* 
+    *>    DEBUG_LOOP   yLOG_note    ("can not get control/open device");              <* 
+    *>    DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);                              <* 
+    *>    return rce;                                                                 <* 
+    *> }                                                                              <*/
+   /*---(clear the screen)---------------*/
+   /*> DEBUG_LOOP   yLOG_note    ("clear and write login message");                   <*/
+   /*> sprintf (x_msg, "ping");                                                       <* 
+    *> write   (x_fd, x_msg, strlen (x_msg));                                         <*/
+   /*> fprintf (f, "ping\n");                                                         <*/
+   /*> sprintf (x_msg, "p");                                                          <* 
+    *> write (g_ttys [a_tty].fd, x_msg, strlen (x_msg));                              <*/
+   /*---(close)--------------------------*/
+   /*> rc = close (x_fd);                                                             <*/
+   rc = fclose (f);
+   DEBUG_LOOP   yLOG_value   ("close"     , rc);
+   --rce;  if (rc < 0) {
+      DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);
+      return rce;
+   }
+   /*> int         x_stdin     = 0;                                                   <* 
+    *> int         x_stdout    = 0;                                                   <* 
+    *> int         x_stderr    = 0;                                                   <* 
+    *> /+---(save stdin,out,err)----------+/                                          <* 
+    *> DEBUG_LOOP   yLOG_note    ("save off stdin, stdout, stderr");                  <* 
+    *> dup2 (0, x_stdin);                                                             <* 
+    *> dup2 (1, x_stdout);                                                            <* 
+    *> dup2 (2, x_stderr);                                                            <* 
+    *> /+---(set to device)---------------+/                                          <* 
+    *> DEBUG_LOOP   yLOG_note    ("set stdin, stdout, stderr to device");             <* 
+    *> dup2 (g_polls [a_tty].fd, 0);                                                  <* 
+    *> dup2 (g_polls [a_tty].fd, 1);                                                  <* 
+    *> dup2 (g_polls [a_tty].fd, 2);                                                  <* 
+    *> /+---(launch)----------------------+/                                          <* 
+    *> printf ("ping\n");                                                             <* 
+    *> /+---(restore stdin,out,err)-------+/                                          <* 
+    *> DEBUG_LOOP   yLOG_note    ("restore stdin, stdout, stderr");                   <* 
+    *> dup2 (x_stdin , 0);                                                            <* 
+    *> dup2 (x_stdout, 1);                                                            <* 
+    *> dup2 (x_stderr, 2);                                                            <*/
+   /*---(complete)-----------------------*/
+   DEBUG_LOOP  yLOG_exit    (__FUNCTION__);
+   return 0;
+}
 

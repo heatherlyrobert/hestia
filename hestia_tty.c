@@ -4,7 +4,9 @@
 
 tTTY        g_ttys      [MAX_TTYS];
 /*345678901-12345678901-12345678901-12345678901-12345678901-12345678901-123456*/
-char        s_active    [LEN_FIELD] = "------------------------------------------------------------------------------------------";
+char        s_active    [LEN_HUND] = "------------------------------------------------------------------------------------------";
+
+
 
 /*====================------------------------------------====================*/
 /*===----                              tty                             ----===*/
@@ -87,9 +89,9 @@ tty_init                (void)
       sprintf (g_ttys [i].name  , "tty%d"     , i);
       sprintf (g_ttys [i].device, "/dev/tty%d", i);
       /*---(host)------------------------*/
-      g_ttys [i].cluster  = (rand() % 64) + 1;
-      g_ttys [i].host_num = rand() % g_nhost;
-      sprintf (g_ttys [i].host_name, "#%02d.%s", g_ttys[i].host_num, g_hosts [g_ttys [i].host_num]);
+      g_ttys [i].language = ySTR_language ();
+      g_ttys [i].cluster  = ySTR_cluster  ();
+      g_ttys [i].host     = ySTR_host     ();
       /*---(flags)-----------------------*/
       g_ttys [i].valid    = TTY_INVALID;
       g_ttys [i].allowed  = TTY_BLOCKED;
@@ -107,6 +109,9 @@ tty_init                (void)
       rc = tty_valid (g_ttys [i].device);
       if (rc >= 0)   g_ttys [i].valid    = TTY_VALID;
       /*> DEBUG_PROG   yLOG_complex ("g_ttys"    , "%2d %-12.12s %c %c %c %c", i, g_ttys [i].device, g_ttys [i].valid, g_ttys [i].allowed, g_ttys [i].watched, g_ttys [i].active);   <*/
+      /*---(polling)---------------------*/
+      g_polls [i].fd      = -1;
+      g_polls [i].events  = POLLIN;
       /*---(done)------------------------*/
    }
    /*---(complete)-----------------------*/
@@ -193,7 +198,8 @@ tty_open                (int a_tty)
       return rce;
    }
    /*---(open)---------------------------*/
-   x_fd = open (g_ttys [a_tty].device, O_RDWR | O_NOCTTY);
+   /*> x_fd = open (g_ttys [a_tty].device, O_RDWR | O_NOCTTY);                        <*/
+   x_fd = open (g_ttys [a_tty].device, O_RDWR | O_NOCTTY | O_NONBLOCK);
    DEBUG_LOOP   yLOG_value   ("x_fd"      , x_fd);
    --rce;  if (x_fd <  0) {
       DEBUG_LOOP   yLOG_note    ("can not get control/open device");
@@ -253,6 +259,13 @@ tty_close               (int a_tty)
       DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);
       return rce;
    }
+   /*---(set terminal back)--------------*/
+   rc = tcsetattr (g_ttys [a_tty].fd, TCSANOW, &(g_ttys [a_tty].original));
+   DEBUG_LOOP   yLOG_value   ("setattr"   , rc);
+   --rce;  if (rc < 0) {
+      DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);
+      return rce;
+   }
    /*---(close)--------------------------*/
    rc = close (g_ttys [a_tty].fd);
    DEBUG_LOOP   yLOG_value   ("close"     , rc);
@@ -278,7 +291,9 @@ tty_display             (int a_tty)
    char       *p           = NULL;
    char        x_base      [LEN_LABEL];
    int         x_len       =    0;
-   char        x_msg       [LEN_RECD];
+   char        x_prompt    [LEN_HUND];
+   int         c           =    0;
+   tTERMIOS    x_termios;
    /*---(header)-------------------------*/
    DEBUG_LOOP   yLOG_enter   (__FUNCTION__);
    /*---(defense)------------------------*/
@@ -296,11 +311,30 @@ tty_display             (int a_tty)
       DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);
       return rce;
    }
+   /*---(save current settings)----------*/
+   rc = tcgetattr (g_ttys [a_tty].fd, &(g_ttys [a_tty].original));
+   DEBUG_LOOP   yLOG_value   ("getattr"   , rc);
+   --rce;  if (rc < 0) {
+      DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);
+      return rce;
+   }
+   /*---(clear existing in/out)----------*/
+   rc = tcflush (g_ttys [a_tty].fd, TCIOFLUSH);  /* flush both input/output */
+   DEBUG_LOOP   yLOG_value   ("flush"     , rc);
+   --rce;  if (rc < 0) {
+      DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);
+      return rce;
+   }
    /*---(clear the screen)---------------*/
-   DEBUG_LOOP   yLOG_note    ("clear and write login message");
+   DEBUG_LOOP   yLOG_value   ("langugage" , g_ttys [a_tty].language);
+   DEBUG_LOOP   yLOG_value   ("cluster"   , g_ttys [a_tty].cluster);
+   DEBUG_LOOP   yLOG_value   ("host"      , g_ttys [a_tty].host);
+   rc = ySTR_prompt (YSTR_BREADCRUMB, g_ttys [a_tty].language, g_ttys [a_tty].cluster, g_ttys [a_tty].host, x_prompt, NULL);
+   DEBUG_LOOP   yLOG_value   ("prompt"    , rc);
+   DEBUG_LOOP   yLOG_info    ("x_prompt"  , x_prompt);
    write   (g_ttys [a_tty].fd,"\033c" , 2);
-   sprintf (x_msg, "cluster (%02d) host <%s> login: ", g_ttys [a_tty].cluster, g_ttys [a_tty].host_name);
-   write   (g_ttys [a_tty].fd, x_msg, strlen (x_msg));
+   write   (g_ttys [a_tty].fd, x_prompt, strlen (x_prompt));
+   write   (g_ttys [a_tty].fd," " , 1);
    /*---(log the openning)---------------*/
    rc = ySEC_getty_on  (g_ttys [a_tty].name);
    DEBUG_LOOP   yLOG_value   ("getty_on"  , rc);
@@ -327,15 +361,10 @@ tty_openall        (void)
       /*---(display)---------------------*/
       DEBUG_LOOP   yLOG_value   ("index"     , i);
       DEBUG_LOOP   yLOG_info    ("->name"    , g_ttys [i].device);
-      DEBUG_LOOP   yLOG_char    ("->allowed" , g_ttys [i].allowed);
       /*---(filter)----------------------*/
+      DEBUG_LOOP   yLOG_char    ("->allowed" , g_ttys [i].allowed);
       if (g_ttys [i].allowed != TTY_ALLOWED) {
          DEBUG_LOOP   yLOG_note    ("not allowed by hestia, skipping");
-         continue;
-      }
-      DEBUG_LOOP   yLOG_char    ("->watched" , g_ttys [i].watched);
-      if (g_ttys [i].watched != TTY_WATCHED) {
-         DEBUG_LOOP   yLOG_note    ("not watched by hestia, skipping");
          continue;
       }
       DEBUG_LOOP   yLOG_char    ("->active"  , g_ttys [i].active);
@@ -343,15 +372,8 @@ tty_openall        (void)
          DEBUG_LOOP   yLOG_note    ("already logged in, skipping");
          continue;
       }
-      /*---(check)-----------------------*/
-      rc = tty_valid   (g_ttys [i].device);
-      DEBUG_LOOP   yLOG_value   ("valid"     , rc);
-      if (rc < 0) {
-         DEBUG_LOOP   yLOG_note    ("not a valid tty for use");
-         continue;
-      }
       /*---(open)------------------------*/
-      rc = tty_open    (g_ttys [i].device);
+      rc = tty_open    (i);
       DEBUG_LOOP   yLOG_value   ("open"      , rc);
       if (rc < 0) {
          DEBUG_LOOP   yLOG_note    ("could not prepare tty for use");
@@ -373,189 +395,6 @@ tty_openall        (void)
    return c;
 }
 
-/*> char             /+ [------] mark a tty as unusable --------------------------+/   <* 
- *> tty_skip           (char *a_tty)                                                   <* 
- *> {                                                                                  <* 
- *>    /+---(begin)--------------------------+/                                        <* 
- *>    yLOG_senter (__FUNCTION__);                                                     <* 
- *>    /+---(locals)-----------+-----------+-+/                                        <* 
- *>    int         i           = 0;                                                    <* 
- *>    int         count       = 0;                                                    <* 
- *>    /+---(loop to find)-------------------+/                                        <* 
- *>    for (i = 0; i < ntty; ++i) {                                                    <* 
- *>       if (strcmp (g_ttys [i].device, a_tty) != 0) continue;                        <* 
- *>       /+---(mark invalid)----------------+/                                        <* 
- *>       ttys    [i].watched    =  'B';                                               <* 
- *>       ++count;                                                                     <* 
- *>       yLOG_snote  (g_ttys [i].device);                                             <* 
- *>       break;                                                                       <* 
- *>    }                                                                               <* 
- *>    if (count == 0)  yLOG_snote  ("none found");                                    <* 
- *>    /+---(complete)-----------------------+/                                        <* 
- *>    yLOG_sexit  (__FUNCTION__);                                                     <* 
- *>    return 0;                                                                       <* 
- *> }                                                                                  <*/
-
-/*> char             /+ [------] parse a lsof record -----------------------------+/   <* 
- *> tty_parse          (char *a_tty)                                                   <* 
- *> {                                                                                  <* 
- *>    /+---(locals)-----------+-----------+-+/                                        <* 
- *>    FILE       *f           = NULL;                                                 <* 
- *>    char        recd        [500];                                                  <* 
- *>    char       *p           = NULL;                                                 <* 
- *>    int         rpid        = 0;                                                    <* 
- *>    int         ppid        = 0;                                                    <* 
- *>    /+---(open)---------------------------+/                                        <* 
- *>    f = fopen ("/tmp/hestia_ttys", "r");                                            <* 
- *>    if (f == NULL) {                                                                <* 
- *>       return -1;                                                                   <* 
- *>    }                                                                               <* 
- *>    /+---(loop through entries)-----------+/                                        <* 
- *>    while (1) {                                                                     <* 
- *>       /+---(get a record)----------------+/                                        <* 
- *>       fgets (recd, 100, f);                                                        <* 
- *>       if (feof (f) != 0) {                                                         <* 
- *>          break;                                                                    <* 
- *>       }                                                                            <* 
- *>       recd [strlen (recd) - 1] = '\0';                                             <* 
- *>       /+---(command)---------------------+/                                        <* 
- *>       p = strtok (recd, " ");                                                      <* 
- *>       if (p == NULL) continue;                                                     <* 
- *>       /+---(pid)-------------------------+/                                        <* 
- *>       p = strtok (NULL,  " ");                                                     <* 
- *>       if (p == NULL) continue;                                                     <* 
- *>       str_trim (p);                                                                <* 
- *>       rpid = atoi (p);                                                             <* 
- *>       /+---(ppid)------------------------+/                                        <* 
- *>       p = strtok (NULL,  " ");                                                     <* 
- *>       if (p == NULL) continue;                                                     <* 
- *>       str_trim (p);                                                                <* 
- *>       ppid = atoi (p);                                                             <* 
- *>       /+---(user)------------------------+/                                        <* 
- *>       p = strtok (NULL,  " ");                                                     <* 
- *>       if (p == NULL) continue;                                                     <* 
- *>       str_trim (p);                                                                <* 
- *>       /+---(other stuff)-----------------+/                                        <* 
- *>       p = strtok (NULL,  " ");                                                     <* 
- *>       if (p == NULL) continue;                                                     <* 
- *>       p = strtok (NULL,  " ");                                                     <* 
- *>       if (p == NULL) continue;                                                     <* 
- *>       p = strtok (NULL,  " ");                                                     <* 
- *>       if (p == NULL) continue;                                                     <* 
- *>       p = strtok (NULL,  " ");                                                     <* 
- *>       if (p == NULL) continue;                                                     <* 
- *>       p = strtok (NULL,  " ");                                                     <* 
- *>       if (p == NULL) continue;                                                     <* 
- *>       /+---(dev)-------------------------+/                                        <* 
- *>       p = strtok (NULL,  " ");                                                     <* 
- *>       if (p == NULL) continue;                                                     <* 
- *>       str_trim (p);                                                                <* 
- *>       if (strcmp (p, a_tty) == 0) {                                                <* 
- *>          fclose (f);                                                               <* 
- *>          return 0;                                                                 <* 
- *>       }                                                                            <* 
- *>       /+---(next)------------------------+/                                        <* 
- *>    }                                                                               <* 
- *>    /+---(close the file)-----------------+/                                        <* 
- *>    fclose (f);                                                                     <* 
- *>    /+---(complete)-----------------------+/                                        <* 
- *>    return -1;                                                                      <* 
- *> }                                                                                  <*/
-
-/*> char             /+ [------] find active ttys and gettys ---------------------+/   <* 
- *> tty_existing       (void)                                                          <* 
- *> {                                                                                  <* 
- *>    /+---(design notes)-------------------+/                                        <* 
- *>    /+                                                                              <* 
- *>     * there are few ways to find out what files/devices are in use...              <* 
- *>     *    - temp file with them listed                                              <* 
- *>     *    - advisory or exclusive locks                                             <* 
- *>     *    - kernel's proc filesystem                                                <* 
- *>     *                                                                              <* 
- *>     * the first two don't help across different programs and the first is really   <* 
- *>     * bad as it doesn't reset in the case of program failure.  the only reason     <* 
- *>     * people don't like the third is speed, but it only needs to run when the      <* 
- *>     * program is started.                                                          <* 
- *>     *                                                                              <* 
- *>     * rather that write my own proc filesystem function, i took the simple way     <* 
- *>     * out for now and used lsof.  not perfect, but quick and easy (for now).       <* 
- *>     *                                                                              <* 
- *>     +/                                                                             <* 
- *>    /+---(begin)--------------------------+/                                        <* 
- *>    yLOG_enter  (__FUNCTION__);                                                     <* 
- *>    /+---(locals)-----------+-----------+-+/                                        <* 
- *>    FILE       *f           = NULL;                                                 <* 
- *>    char        recd        [500];                                                  <* 
- *>    int         count       = 0;                                                    <* 
- *>    char       *p           = NULL;                                                 <* 
- *>    int         rpid        = 0;                                                    <* 
- *>    int         ppid        = 0;                                                    <* 
- *>    /+---(gather the intel)---------------+/                                        <* 
- *>    system ("lsof -R | grep /dev/tty > /tmp/hestia_ttys");                          <* 
- *>    /+---(open the file)------------------+/                                        <* 
- *>    f = fopen ("/tmp/hestia_ttys", "r");                                            <* 
- *>    if (f == NULL) {                                                                <* 
- *>       yLOG_info   ("file"      , "can not open file");                             <* 
- *>       return -1;                                                                   <* 
- *>    }                                                                               <* 
- *>    yLOG_info   ("file"      , "successfully openned file");                        <* 
- *>    /+---(loop through entries)-----------+/                                        <* 
- *>    while (1) {                                                                     <* 
- *>       /+---(get a record)----------------+/                                        <* 
- *>       fgets (recd, 100, f);                                                        <* 
- *>       if (feof (f) != 0) {                                                         <* 
- *>          yLOG_info   ("eof"       , "hit end of tile");                            <* 
- *>          break;                                                                    <* 
- *>       }                                                                            <* 
- *>       recd [strlen (recd) - 1] = '\0';                                             <* 
- *>       ++count;                                                                     <* 
- *>       yLOG_value  ("record"    , count);                                           <* 
- *>       /+---(command)---------------------+/                                        <* 
- *>       p = strtok (recd, " ");                                                      <* 
- *>       if (p == NULL) continue;                                                     <* 
- *>       /+---(pid)-------------------------+/                                        <* 
- *>       p = strtok (NULL,  " ");                                                     <* 
- *>       if (p == NULL) continue;                                                     <* 
- *>       str_trim (p);                                                                <* 
- *>       rpid = atoi (p);                                                             <* 
- *>       yLOG_value  ("rpid"      , rpid);                                            <* 
- *>       /+---(ppid)------------------------+/                                        <* 
- *>       p = strtok (NULL,  " ");                                                     <* 
- *>       if (p == NULL) continue;                                                     <* 
- *>       str_trim (p);                                                                <* 
- *>       ppid = atoi (p);                                                             <* 
- *>       yLOG_value  ("ppid"      , ppid);                                            <* 
- *>       /+---(user)------------------------+/                                        <* 
- *>       p = strtok (NULL,  " ");                                                     <* 
- *>       if (p == NULL) continue;                                                     <* 
- *>       str_trim (p);                                                                <* 
- *>       yLOG_info   ("user"      , p);                                               <* 
- *>       /+---(other stuff)-----------------+/                                        <* 
- *>       p = strtok (NULL,  " ");                                                     <* 
- *>       if (p == NULL) continue;                                                     <* 
-*>       p = strtok (NULL,  " ");                                                     <* 
-*>       if (p == NULL) continue;                                                     <* 
-*>       p = strtok (NULL,  " ");                                                     <* 
-*>       if (p == NULL) continue;                                                     <* 
-*>       p = strtok (NULL,  " ");                                                     <* 
-*>       if (p == NULL) continue;                                                     <* 
-*>       p = strtok (NULL,  " ");                                                     <* 
-*>       if (p == NULL) continue;                                                     <* 
-*>       /+---(dev)-------------------------+/                                        <* 
-*>       p = strtok (NULL,  " ");                                                     <* 
-*>       if (p == NULL) continue;                                                     <* 
-*>       str_trim (p);                                                                <* 
-*>       yLOG_info   ("tty"       , p);                                               <* 
-*>       tty_skip (p);                                                                <* 
-*>       /+---(next)-------------------------+/                                       <* 
-*>    }                                                                               <* 
-*>    /+---(close the file)-----------------+/                                        <* 
-*>    fclose (f);                                                                     <* 
-*>    /+---(complete)-----------------------+/                                        <* 
-*>    yLOG_exit   (__FUNCTION__);                                                     <* 
-*>    return 0;                                                                       <* 
-*> }                                                                                  <*/
-
 char             /* [------] find a running job by name ----------------------*/
 tty_review              (void)
 {
@@ -571,6 +410,12 @@ tty_review              (void)
    char        x_tty       [LEN_RECD];
    int         x_ttynum    =    0;
    int         x_len       =    0;
+   char        x_statname  [LEN_RECD];
+   FILE       *f           = NULL;
+   char        x_line      [LEN_RECD];
+   char       *p           = NULL;
+   char       *q           = NULL;
+   char        x_prog      [LEN_RECD];
    char        c           =    0;
    char        i           =    0;
    /*---(begin)--------------------------*/
@@ -582,7 +427,7 @@ tty_review              (void)
    }
    /*---(open the proc system)-----------*/
    x_procdir = opendir ("/proc");
-   DEBUG_LOOP   yLOG_point  ("x_procdir" , x_procdir);
+   /*> DEBUG_LOOP   yLOG_point  ("x_procdir" , x_procdir);                            <*/
    if (x_procdir == NULL) {
       DEBUG_LOOP   yLOG_exitr  (__FUNCTION__, -1);
       return -1;
@@ -591,55 +436,64 @@ tty_review              (void)
    while (1)  {
       /*---(next process)----------------*/
       x_procden = readdir (x_procdir);
-      DEBUG_LOOP   yLOG_point  ("x_procden" , x_procden);
+      /*> DEBUG_LOOP   yLOG_point  ("x_procden" , x_procden);                         <*/
       if (x_procden == NULL)  break;
-      DEBUG_LOOP   yLOG_info   ("->d_name"  , x_procden->d_name);
+      /*> DEBUG_LOOP   yLOG_info   ("->d_name"  , x_procden->d_name);                 <*/
       x_procnum = atoi (x_procden->d_name);
-      DEBUG_LOOP   yLOG_value  ("x_procnum" , x_procnum);
+      /*> DEBUG_LOOP   yLOG_value  ("x_procnum" , x_procnum);                         <*/
       if (x_procnum == 0)     continue;
       /*---(open fds)--------------------*/
       sprintf (x_fdname, "/proc/%s/fd", x_procden->d_name);
-      DEBUG_LOOP   yLOG_info   ("x_fdname"  , x_fdname);
+      /*> DEBUG_LOOP   yLOG_info   ("x_fdname"  , x_fdname);                          <*/
       x_fddir = opendir (x_fdname);
-      DEBUG_LOOP   yLOG_point  ("x_fddir"   , x_fddir);
+      /*> DEBUG_LOOP   yLOG_point  ("x_fddir"   , x_fddir);                           <*/
       if (x_fddir == NULL)    continue;
-      DEBUG_LOOP   yLOG_enter  (__FUNCTION__);
+      /*> DEBUG_LOOP   yLOG_enter  (__FUNCTION__);                                    <*/
       while (1)  {
          /*---(next fd)------------------*/
          x_fdden = readdir (x_fddir);
-         DEBUG_LOOP   yLOG_point  ("x_fdden"   , x_fdden);
+         /*> DEBUG_LOOP   yLOG_point  ("x_fdden"   , x_fdden);                        <*/
          if (x_fdden == NULL)    break;
-         DEBUG_LOOP   yLOG_info   ("->d_name"  , x_fdden->d_name);
+         /*> DEBUG_LOOP   yLOG_info   ("->d_name"  , x_fdden->d_name);                <*/
          x_fdnum = atoi (x_fdden->d_name);
-         DEBUG_LOOP   yLOG_value  ("x_fdnum"   , x_fdnum);
+         /*> DEBUG_LOOP   yLOG_value  ("x_fdnum"   , x_fdnum);                        <*/
          if (x_fdnum < 3)        continue;
          /*---(get link destination)-----*/
          sprintf (x_ttyname, "/proc/%s/fd/%s", x_procden->d_name, x_fdden->d_name);
-         DEBUG_LOOP   yLOG_info   ("x_ttyname" , x_ttyname);
+         /*> DEBUG_LOOP   yLOG_info   ("x_ttyname" , x_ttyname);                      <*/
          realpath (x_ttyname, x_tty);
          x_len = strlen (x_tty);
-         DEBUG_LOOP   yLOG_info   ("x_tty"     , x_tty);
+         /*> DEBUG_LOOP   yLOG_info   ("x_tty"     , x_tty);                          <*/
          if (x_len <= 8)      continue;
          if (strncmp (x_tty, "/dev/tty", 8) != 0)  continue;
          x_ttynum = atoi (x_tty + 8);
          if (x_ttynum >= MAX_TTYS)   continue;
+         /*---(get the name)-------------*/
+         sprintf (x_statname, "/proc/%s/stat", x_procden->d_name);
+         f = fopen (x_statname, "r");
+         if (f == NULL) continue;
+         fgets (x_line, 1000, f);
+         p = strtok (x_line, "(");
+         p = strtok (NULL, ")");
+         strcpy (x_prog, p);
+         fclose (f);
+         /*---(verify)----------------------*/
+         q = strchr (x_prog, ' ');
+         if (q != NULL)  q [0] = '\0';
          /*---(display key data)---------*/
-         DEBUG_LOOP   yLOG_char   ("->valid"   , g_ttys [x_ttynum].valid);
-         DEBUG_LOOP   yLOG_char   ("->allowed" , g_ttys [x_ttynum].allowed);
-         DEBUG_LOOP   yLOG_char   ("->watched" , g_ttys [x_ttynum].watched);
-         DEBUG_LOOP   yLOG_char   ("->active"  , g_ttys [x_ttynum].active);
+         DEBUG_PROG   yLOG_complex ("found"     , "%-12.12s  %-12.12s  %2d  %c %c %c %c", x_prog, g_ttys [x_ttynum].device, g_ttys [x_ttynum].fd, g_ttys [x_ttynum].valid, g_ttys [x_ttynum].allowed, g_ttys [x_ttynum].watched, g_ttys [x_ttynum].active);
          /*---(flag active)--------------*/
          ++c;
          s_active [x_ttynum] = TTY_ACTIVE;
          /*---(flag others)--------------*/
          if (g_ttys [x_ttynum].allowed == TTY_BLOCKED) {
             g_ttys [x_ttynum].active = TTY_OTHERS;
-         /*> } else {                                                                 <* 
-          *>    g_ttys [x_ttynum].active = TTY_ACTIVE;                                <*/
-         }
-         /*---(done)---------------------*/
+            /*> } else {                                                                 <* 
+             *>    g_ttys [x_ttynum].active = TTY_ACTIVE;                                <*/
       }
-      DEBUG_LOOP   yLOG_exit   (__FUNCTION__);
+      /*---(done)---------------------*/
+      }
+      /*> DEBUG_LOOP   yLOG_exit   (__FUNCTION__);                                    <*/
       closedir (x_fddir);
    }
    closedir (x_procdir);
