@@ -7,83 +7,6 @@
 
 int       logger   = -1;
 
-FILE       *conf_file           = NULL;          /* configuration file decriptor   */
-
-/* list of champion chess playing programs   */
-char g_hosts [MAX_HOST][LEN_LABEL] = {
-   "deep_blue",
-   "blue_gene",
-   "hydra",
-   "deep_crack",
-   "kaissa",
-   "belle",
-   "blitz",
-   "deep_thought",
-   "gideon",
-   "deep_junior",
-   "zappa",
-   "junior",
-   "sjeng",
-   "rondo",
-   "rybka",
-   "fruit",
-   "crafty",
-   "mephisto",
-   "jonny",
-   "fute",
-   "diep",
-   "falcon",
-   "rajlich",
-   "spike",
-   "ikarus",
-   "chiron",
-   "lion",
-   "chaturanga",
-   "uragano",
-   "parsos",
-   "etabeta",
-   "loop",
-   "the_baron",
-   "the_king",
-   "hiarcs",
-   "cluster_toga",
-   "equinox",
-   "pandix",
-   "joker",
-   "darminios",
-   "fridonlin",
-   "hector",
-   "criter",
-   "houdini",
-   "naum",
-   "stockfish",
-   "thinker",
-   "komodo",
-   "alaric",
-   "booot",
-   "bobcat",
-   "cyrano",
-   "colossus",
-   "dirty",
-   "frenzee",
-   "glaurung",
-   "gull",
-   "hannibal",
-   "naraku",
-   "pharaon",
-   "protector",
-   "scorpio",
-   "strelka",
-   "the_mad_prune",
-   "tornado",
-   "twisted_logic",
-   "umko",
-   "wildcat",
-   "crazy_bishop",
-   "---end-of-list-----",
-};
-int        g_nhost  = 0;
-
 
 
 /*====================------------------------------------====================*/
@@ -147,7 +70,7 @@ base_config             (void)
    /*---(lines)--------------------------*/
    while (1) {
       /*---(read)------------------------*/
-      rc = yPARSE_read (NULL, NULL);
+      rc = yPARSE_read (NULL, NULL, NULL, NULL);
       DEBUG_INPT   yLOG_value   ("yparse"    , rc);
       if (rc == 0) {
          DEBUG_INPT  yLOG_note    ("end-of-file");

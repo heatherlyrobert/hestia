@@ -73,14 +73,6 @@ tty_init                (void)
    int         i           =    0;
    /*---(header)-------------------------*/
    DEBUG_PROG   yLOG_enter   (__FUNCTION__);
-   /*---(count hosts)--------------------*/
-   g_nhost = 0;
-   DEBUG_PROG   yLOG_value   ("MAX_HOST"  , MAX_HOST);
-   for (i = 0; i < MAX_HOST; ++i) {
-      if (g_hosts [i][0] == '-')  break;
-      ++g_nhost;
-   }
-   DEBUG_PROG   yLOG_value   ("g_nhost"   , g_nhost);
    /*---(initialize ttys)----------------*/
    DEBUG_PROG   yLOG_value   ("MAX_TTY"   , MAX_TTYS);
    for (i = 0; i < MAX_TTYS; ++i) {
@@ -189,7 +181,7 @@ tty_open                (int a_tty)
       DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);
       return rce;
    }
-   /*---(check chmod)--------------------*/
+   /*---(change permissions)-------------*/
    rc = chmod (g_ttys [a_tty].device, 0600);
    DEBUG_LOOP   yLOG_value   ("chmod"     , rc);
    --rce;  if (rc != 0) {
@@ -198,7 +190,6 @@ tty_open                (int a_tty)
       return rce;
    }
    /*---(open)---------------------------*/
-   /*> x_fd = open (g_ttys [a_tty].device, O_RDWR | O_NOCTTY);                        <*/
    x_fd = open (g_ttys [a_tty].device, O_RDWR | O_NOCTTY | O_NONBLOCK);
    DEBUG_LOOP   yLOG_value   ("x_fd"      , x_fd);
    --rce;  if (x_fd <  0) {
@@ -318,6 +309,27 @@ tty_display             (int a_tty)
       DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);
       return rce;
    }
+   /*> fcntl (fd, F_SETFL, 0);                                                                    <* 
+    *> /+---(get current term settings)------+/                                                   <* 
+    *> tcgetattr(fd, &s_oldtio);                                                                  <* 
+    *> /+---(prepare new one)----------------+/                                                   <* 
+    *> bzero(&s_newtio, sizeof (tTERMIOS));                                                       <* 
+    *> /+> s_newtio.c_cflag = B115200 | CS8 | CLOCAL | CREAD;                               <+/   <* 
+    *> s_newtio.c_cflag = B2400 | CS8 | CLOCAL | CREAD;                                           <* 
+    *> cfsetispeed(&s_newtio, B115200);                                                           <* 
+    *> /+> cfsetispeed(&s_newtio, B2400);                                                   <+/   <* 
+    *> cfsetospeed(&s_newtio, B115200);                                                           <* 
+    *> /+> cfsetospeed(&s_newtio, B2400);                                                   <+/   <* 
+    *> /+> s_newtio.c_cflag |= (CLOCAL | CREAD);                                            <*    <* 
+    *>  *> s_newtio.c_cflag &= ~CSIZE;                                                      <*    <* 
+    *>  *> s_newtio.c_cflag &= ~PARENB;                                                     <*    <* 
+    *>  *> s_newtio.c_cflag &= ~CSTOPB;                                                     <*    <* 
+    *>  *> s_newtio.c_cflag |= CS8;                                                         <+/   <* 
+    *> s_newtio.c_iflag  = IGNPAR  | ICRNL   ;                                                    <* 
+    *> s_newtio.c_oflag  = 0       ;                                                              <* 
+    *> s_newtio.c_lflag  = ICANON  ;                                                              <* 
+    *> tcflush   (fd, TCIFLUSH);                                                                  <* 
+    *> tcsetattr (fd, TCSANOW, &s_newtio);                                                        <*/
    /*---(clear existing in/out)----------*/
    rc = tcflush (g_ttys [a_tty].fd, TCIOFLUSH);  /* flush both input/output */
    DEBUG_LOOP   yLOG_value   ("flush"     , rc);
@@ -332,9 +344,9 @@ tty_display             (int a_tty)
    rc = ySTR_prompt (YSTR_BREADCRUMB, g_ttys [a_tty].language, g_ttys [a_tty].cluster, g_ttys [a_tty].host, x_prompt, NULL);
    DEBUG_LOOP   yLOG_value   ("prompt"    , rc);
    DEBUG_LOOP   yLOG_info    ("x_prompt"  , x_prompt);
-   write   (g_ttys [a_tty].fd,"\033c" , 2);
-   write   (g_ttys [a_tty].fd, x_prompt, strlen (x_prompt));
-   write   (g_ttys [a_tty].fd," " , 1);
+	write (g_ttys [a_tty].fd, "\033[r\033[H\033[J", 9);
+   write (g_ttys [a_tty].fd, x_prompt, strlen (x_prompt));
+   write (g_ttys [a_tty].fd," " , 1);
    /*---(log the openning)---------------*/
    rc = ySEC_getty_on  (g_ttys [a_tty].name);
    DEBUG_LOOP   yLOG_value   ("getty_on"  , rc);

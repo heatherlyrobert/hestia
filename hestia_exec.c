@@ -79,15 +79,14 @@ exec_check              (void)
          ++g_ttys [i].failures;
          break;
       }
-      /*---(clear existing in/out)----------*/
-      rc = tcflush (g_ttys [i].fd, TCIOFLUSH);  /* flush both input/output */
-      DEBUG_LOOP   yLOG_value   ("flush"     , rc);
+      /*---(re-open)------------------------*/
+      rc = tty_open     (i);
+      DEBUG_LOOP   yLOG_value   ("re-open"   , rc);
+      rc = tty_display  (i);
+      DEBUG_LOOP   yLOG_value   ("display"   , rc);
       /*---(reset run data)--------------*/
       g_ttys [i].rpid   = -1;
       g_ttys [i].active = TTY_UNUSED;
-      tty_display (i);
-      /*> tty_close (i);                                                              <*/
-      /*> tty_open  (i);                                                              <*/
       ++c;
       DEBUG_LOOP  yLOG_note    ("collected, next");
       /*---(done)------------------------*/
@@ -154,15 +153,16 @@ exec_poll               (void)
       g_ttys [i].active  = TTY_ACTIVE;
       ++g_ttys [i].attempts;
       /*---(save stdin,out,err)----------*/
-      DEBUG_LOOP   yLOG_note    ("save off stdin, stdout, stderr");
-      dup2 (0, x_stdin);
-      dup2 (1, x_stdout);
-      dup2 (2, x_stderr);
+      /*> DEBUG_LOOP   yLOG_note    ("save off stdin, stdout, stderr");               <*/
+      /*> dup2 (0, x_stdin);                                                          <* 
+       *> dup2 (1, x_stdout);                                                         <* 
+       *> dup2 (2, x_stderr);                                                         <*/
       /*---(set to device)---------------*/
-      DEBUG_LOOP   yLOG_note    ("set stdin, stdout, stderr to device");
-      dup2 (g_polls [i].fd, 0);
-      dup2 (g_polls [i].fd, 1);
-      dup2 (g_polls [i].fd, 2);
+      /*> DEBUG_LOOP   yLOG_note    ("set stdin, stdout, stderr to device");          <*/
+      /*> dup2 (g_polls [i].fd, 0);                                                   <* 
+       *> dup2 (g_polls [i].fd, 1);                                                   <* 
+       *> dup2 (g_polls [i].fd, 2);                                                   <*/
+      tty_close (i);
       /*---(launch)----------------------*/
       /*> DEBUG_LOOP  yLOG_value   ("input"     , fgetc (stdin));                     <*/
       if (my.user_mode == MODE_DAEMON) {
@@ -178,10 +178,10 @@ exec_poll               (void)
          DEBUG_LOOP   yLOG_note    ("LAUNCH FAILED");
       }
       /*---(restore stdin,out,err)-------*/
-      DEBUG_LOOP   yLOG_note    ("restore stdin, stdout, stderr");
-      dup2 (x_stdin , 0);
-      dup2 (x_stdout, 1);
-      dup2 (x_stderr, 2);
+      /*> DEBUG_LOOP   yLOG_note    ("restore stdin, stdout, stderr");                <*/
+      /*> dup2 (x_stdin , 0);                                                         <* 
+       *> dup2 (x_stdout, 1);                                                         <* 
+       *> dup2 (x_stderr, 2);                                                         <*/
       /*---(wrap)------------------------*/
       DEBUG_LOOP   yLOG_note    ("launch complete");
       ++c;

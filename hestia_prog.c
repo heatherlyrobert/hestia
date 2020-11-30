@@ -102,7 +102,7 @@ PROG_init          (void)
    DEBUG_TOPS   yLOG_info    ("purpose"   , P_PURPOSE);
    DEBUG_TOPS   yLOG_info    ("version"   , PROG_version    ());
    DEBUG_TOPS   yLOG_info    ("yEXEC"     , yEXEC_version   ());
-   DEBUG_TOPS   yLOG_info    ("yLOG"      , yLOG_version    ());
+   DEBUG_TOPS   yLOG_info    ("yLOG"      , yLOGS_version   ());
    DEBUG_TOPS   yLOG_info    ("yPARSE"    , yPARSE_version  ());
    /*> DEBUG_TOPS   yLOG_info    ("ySEC"      , ySEC_version    ());                  <*/
    DEBUG_TOPS   yLOG_info    ("ySTR"      , ySTR_version    ());
@@ -265,7 +265,7 @@ static void      o___RUNTIME_________________o (void) {;}
  *> }                                                                                  <*/
 
 void             /* [------] receive signals ---------------------------------*/
-PROG_comm          (int a_signal, siginfo_t *a_info, void *a_nada)
+PROG_comm          (int a_signal, siginfo_t *a_info, char *a_name, char *a_desc)
 {
    /*---(catch)--------------------------*/
    switch (a_signal) {
@@ -339,7 +339,7 @@ PROG_daemon        (void)
       return rce;
    }
    /*---(signals)-------------------------------*/
-   /*> yEXEC_signal (YEXEC_SOFT, YEXEC_YES, YEXEC_NO, PROG_comm);                     <*/
+   yEXEC_signal (YEXEC_SOFT, YEXEC_YES, YEXEC_NO, PROG_comm, "stdsig");
    DEBUG_ENVI   yLOG_value   ("signals"   , rc);
    --rce;  if (rc < 0) {
       printf ("hestia sigals could not be set properly\n");
@@ -368,7 +368,7 @@ PROG_end           (void)
    tty_wrap ();
    /*---(complete)-----------------------*/
    yLOG_exit   (__FUNCTION__);
-   yLOG_end    ();
+   yLOGS_end   ();
    return   0;
 }
 

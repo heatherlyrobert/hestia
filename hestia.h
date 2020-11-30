@@ -2,27 +2,39 @@
 #ifndef HESTIA
 #define HESTIA loaded
 
+
 /*===[[ HEADER ]]=============================================================*/
 /*345678901-12345678901-123456789-123456789-123456789-123456789-123456789-123456789-123456789-*/
 
 #define     P_FOCUS     "SA (system administration)"
 #define     P_NICHE     "au (authentication)"
+#define     P_SUBJECT   "getty terminal daemon"
 #define     P_PURPOSE   "simple, experimental, and transparent getty terminal daemon"
 
 #define     P_NAMESAKE  "hestia-polyolbos (full of blessings)"
 #define     P_HERITAGE  "virgin goddess of hearth, home, architecture, and eternal flame"
 #define     P_IMAGERY   "regal, but modestly cloaked and vieled woman with a wooden staff"
+#define     P_REASON    ""
+
+#define     P_ONELINE   P_NAMESAKE " " P_SUBJECT
+
+#define     P_BASENAME  ""
+#define     P_FULLPATH  ""
+#define     P_SUFFIX    ""
+#define     P_CONTENT   ""
 
 #define     P_SYSTEM    "gnu/linux   (powerful, ubiquitous, technical, and hackable)"
 #define     P_LANGUAGE  "ansi-c      (wicked, limitless, universal, and everlasting)"
 #define     P_CODESIZE  "small       (appoximately 1,000 slocl)"
+#define     P_DEPENDS   "yEXEC, ySEC, ySTR, yPARSE"
 
 #define     P_AUTHOR    "heatherlyrobert"
 #define     P_CREATED   "2012-01"
-#define     P_DEPENDS   "yEXEC, ySEC, ySTR, yPARSE"
 
-#define     P_VERNUM    "1.0f"
-#define     P_VERTXT    "getting hearth to call properly"
+#define     P_VERMAJOR  "1.--, settling into new framework of eos"
+#define     P_VERMINOR  "1.1-, preparing for next production roll-out"
+#define     P_VERNUM    "1.1a"
+#define     P_VERTXT    "small fixes for changes to yEXEC"
 
 #define     P_USAGE     "hestia [OPTIONS]"
 #define     P_DEBUG     "hestia_debug [URGENTS] [OPTIONS]"
@@ -250,9 +262,6 @@ struct cFONT {
    char        h, hs, ho;
 };
 
-extern char        g_hosts     [MAX_HOST][LEN_LABEL];
-extern int         g_nhost;
-
 
 extern char        butterfly   [40] [MAX_ROW] [MAX_COL];
 extern char        chunky      [10] [300];
@@ -370,7 +379,7 @@ char        PROG_args               (int a_argc, char *a_argv[]);
 char        PROG_begin              (void);
 char        PROG_final              (void);
 /*---(runtime)--------------*/
-void        PROG_comm               (int a_signal, siginfo_t *a_info, void *a_nada);
+void        PROG_comm               (int a_signal, siginfo_t *a_info, char *a_name, char *a_desc);
 char        PROG_daemon             (void);
 /*---(wrapup)---------------*/
 char        PROG_end                (void);
