@@ -13,57 +13,6 @@ char        s_active    [LEN_HUND] = "------------------------------------------
 /*====================------------------------------------====================*/
 static void      o___TTY_____________________o (void) {;}
 
-char         /*--> validate a tty device file -------[ ------ [abc.de.fghijk]-*/
-tty_valid               (char *a_name)
-{
-   /*---(locals)-----------+-----+-----+-*/
-   char        rce         =  -10;
-   char        rc          =    0;
-   tSTAT       s;
-   /*---(header)-------------------------*/
-   DEBUG_LOOP   yLOG_enter   (__FUNCTION__);
-   /*---(defense)------------------------*/
-   DEBUG_LOOP   yLOG_point   ("a_name"    , a_name);
-   --rce;  if (a_name == NULL) {
-      DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);
-      return rce;
-   }
-   DEBUG_LOOP   yLOG_info    ("a_name"    , a_name);
-   /*---(check device file)--------------*/
-   rc = stat (a_name, &s);
-   DEBUG_LOOP   yLOG_value   ("stat"      , rc);
-   --rce;  if (rc < 0) {
-      DEBUG_LOOP   yLOG_note    ("can not find device file");
-      DEBUG_LOOP   yLOG_exitr  (__FUNCTION__, rce);
-      return rce;
-   }
-   --rce;  if (S_ISDIR (s.st_mode))  {
-      DEBUG_LOOP   yLOG_note    ("can not use a directory");
-      DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);
-      return rce;
-   }
-   --rce;  if (S_ISLNK (s.st_mode))  {
-      DEBUG_LOOP   yLOG_note    ("can not use a symlink");
-      DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);
-      return rce;
-   }
-   --rce;  if (S_ISREG (s.st_mode))  {
-      DEBUG_LOOP   yLOG_note    ("can not use regular files");
-      DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);
-      return rce;
-   }
-   --rce;  if (!S_ISCHR (s.st_mode))  {
-      DEBUG_LOOP   yLOG_note    ("can only use character devices");
-      DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);
-      return rce;
-   }
-   /*---(confirmation)-------------------*/
-   DEBUG_LOOP   yLOG_note   ("successfully found character device file");
-   /*---(complete)-----------------------*/
-   DEBUG_LOOP   yLOG_exit    (__FUNCTION__);
-   return 0;
-}
-
 char         /*--> initialize the tty data ----------[ ------ [abc.de.fghijk]-*/
 tty_init                (void)
 {
@@ -82,8 +31,8 @@ tty_init                (void)
       sprintf (g_ttys [i].device, "/dev/tty%d", i);
       /*---(host)------------------------*/
       g_ttys [i].language = ySTR_language ();
-      g_ttys [i].cluster  = ySTR_cluster  ();
-      g_ttys [i].host     = ySTR_host     ();
+      g_ttys [i].cluster  = ySTR_cluster  (g_ttys [i].language, -1, NULL, NULL);
+      g_ttys [i].host     = ySTR_host     (g_ttys [i].language, -1, NULL, NULL);
       /*---(flags)-----------------------*/
       g_ttys [i].valid    = TTY_INVALID;
       g_ttys [i].allowed  = TTY_BLOCKED;
@@ -98,7 +47,7 @@ tty_init                (void)
       g_ttys [i].complete = 0;
       g_ttys [i].failures = 0;
       /*---(validate)--------------------*/
-      rc = tty_valid (g_ttys [i].device);
+      rc = ySEC_valid (g_ttys [i].device);
       if (rc >= 0)   g_ttys [i].valid    = TTY_VALID;
       /*> DEBUG_PROG   yLOG_complex ("g_ttys"    , "%2d %-12.12s %c %c %c %c", i, g_ttys [i].device, g_ttys [i].valid, g_ttys [i].allowed, g_ttys [i].watched, g_ttys [i].active);   <*/
       /*---(polling)---------------------*/
@@ -131,6 +80,44 @@ tty_wrap                (void)
    }
    /*---(complete)-----------------------*/
    DEBUG_PROG   yLOG_exit    (__FUNCTION__);
+   return 0;
+}
+
+char
+tty_authorize           (char *a_dev, char *a_listen)
+{
+   /*---(locals)-----------+-----+-----+-*/
+   char        rce         =  -10;
+   char        t           [LEN_TERSE] = "";
+   int         x_tty       =    0;
+   /*---(header)-------------------------*/
+   DEBUG_LOOP   yLOG_senter  (__FUNCTION__);
+   /*---(defense)------------------------*/
+   DEBUG_INPT   yLOG_spoint  (a_dev);
+   --rce;  if (a_dev == NULL) {
+      DEBUG_INPT   yLOG_sexitr  (__FUNCTION__, rce);
+      return rce;
+   }
+   DEBUG_INPT   yLOG_snote   (a_dev);
+   if (strncmp (a_dev, "/dev/tty", 8) != 0) {
+      DEBUG_INPT   yLOG_sexitr  (__FUNCTION__, rce);
+      return rce;
+   }
+   /*---(get number)---------------------*/
+   strlcpy (t, a_dev + 8, LEN_TERSE);
+   DEBUG_INPT   yLOG_snote   (t);
+   x_tty = atoi (t);
+   DEBUG_INPT   yLOG_sint    (x_tty);
+   /*---(validity)--------------------*/
+   DEBUG_INPT   yLOG_schar   (g_ttys [x_tty].valid);
+   if (g_ttys [x_tty].valid != TTY_VALID) {
+      DEBUG_INPT   yLOG_sexitr  (__FUNCTION__, rce);
+      return rce;
+   }
+   g_ttys [x_tty].allowed = TTY_BLOCKED;
+   if (strcmp (a_listen, "on") == 0)   g_ttys [x_tty].allowed = TTY_ALLOWED;
+   /*---(header)-------------------------*/
+   DEBUG_LOOP   yLOG_sexit   (__FUNCTION__);
    return 0;
 }
 
@@ -173,38 +160,45 @@ tty_open                (int a_tty)
       DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);
       return rce;
    }
+   /*---(open terminal)------------------*/
+   rc = ySEC_open (g_ttys [a_tty].device, &x_fd, YEXEC_STDALL, YEXEC_YES, YEXEC_YES);
+   --rce;  if (rc < 0)  {
+      DEBUG_LOOP   yLOG_note    ("a_tty can not be openned");
+      DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);
+      return rce;
+   }
    /*---(change ownership)---------------*/
-   rc = chown (g_ttys [a_tty].device, 0, 0);
-   DEBUG_LOOP   yLOG_value   ("chown"     , rc);
-   --rce;  if (rc != 0) {
-      DEBUG_LOOP   yLOG_note    ("can not change ownership to root only");
-      DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);
-      return rce;
-   }
+   /*> rc = chown (g_ttys [a_tty].device, 0, 0);                                      <* 
+    *> DEBUG_LOOP   yLOG_value   ("chown"     , rc);                                  <* 
+    *> --rce;  if (rc != 0) {                                                         <* 
+    *>    DEBUG_LOOP   yLOG_note    ("can not change ownership to root only");        <* 
+    *>    DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);                              <* 
+    *>    return rce;                                                                 <* 
+    *> }                                                                              <*/
    /*---(change permissions)-------------*/
-   rc = chmod (g_ttys [a_tty].device, 0600);
-   DEBUG_LOOP   yLOG_value   ("chmod"     , rc);
-   --rce;  if (rc != 0) {
-      DEBUG_LOOP   yLOG_note    ("can not change permissions to 0600");
-      DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);
-      return rce;
-   }
+   /*> rc = chmod (g_ttys [a_tty].device, 0600);                                      <* 
+    *> DEBUG_LOOP   yLOG_value   ("chmod"     , rc);                                  <* 
+    *> --rce;  if (rc != 0) {                                                         <* 
+    *>    DEBUG_LOOP   yLOG_note    ("can not change permissions to 0600");           <* 
+    *>    DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);                              <* 
+    *>    return rce;                                                                 <* 
+    *> }                                                                              <*/
    /*---(open)---------------------------*/
-   x_fd = open (g_ttys [a_tty].device, O_RDWR | O_NOCTTY | O_NONBLOCK);
-   DEBUG_LOOP   yLOG_value   ("x_fd"      , x_fd);
-   --rce;  if (x_fd <  0) {
-      DEBUG_LOOP   yLOG_note    ("can not get control/open device");
-      DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);
-      return rce;
-   }
+   /*> x_fd = open (g_ttys [a_tty].device, O_RDWR | O_NOCTTY | O_NONBLOCK);           <* 
+    *> DEBUG_LOOP   yLOG_value   ("x_fd"      , x_fd);                                <* 
+    *> --rce;  if (x_fd <  0) {                                                       <* 
+    *>    DEBUG_LOOP   yLOG_note    ("can not get control/open device");              <* 
+    *>    DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);                              <* 
+    *>    return rce;                                                                 <* 
+    *> }                                                                              <*/
    /*---(test terminal)------------------*/
-   DEBUG_LOOP   yLOG_value   ("isatty"    , isatty (x_fd));
-   --rce;  if (!isatty (x_fd)) {
-      DEBUG_LOOP   yLOG_note    ("not a terminal device");
-      close (x_fd);
-      DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);
-      return rce;
-   }
+   /*> DEBUG_LOOP   yLOG_value   ("isatty"    , isatty (x_fd));                       <*/
+   /*> --rce;  if (!isatty (x_fd)) {                                                  <* 
+    *>    DEBUG_LOOP   yLOG_note    ("not a terminal device");                        <* 
+    *>    close (x_fd);                                                               <* 
+    *>    DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);                              <* 
+    *>    return rce;                                                                 <* 
+    *> }                                                                              <*/
    /*---(save file descriptor)-----------*/
    g_ttys  [a_tty].fd      = x_fd;
    g_polls [a_tty].fd      = x_fd;
@@ -250,20 +244,27 @@ tty_close               (int a_tty)
       DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);
       return rce;
    }
+   /*---(close terminal)-----------------*/
+   rc = ySEC_close (&(g_ttys [a_tty].fd));
+   --rce;  if (rc < 0) {
+      DEBUG_LOOP   yLOG_note    ("can not close the terminal");
+      DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);
+      return rce;
+   }
    /*---(set terminal back)--------------*/
-   rc = tcsetattr (g_ttys [a_tty].fd, TCSANOW, &(g_ttys [a_tty].original));
-   DEBUG_LOOP   yLOG_value   ("setattr"   , rc);
-   --rce;  if (rc < 0) {
-      DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);
-      return rce;
-   }
+   /*> rc = tcsetattr (g_ttys [a_tty].fd, TCSANOW, &(g_ttys [a_tty].original));       <* 
+    *> DEBUG_LOOP   yLOG_value   ("setattr"   , rc);                                  <* 
+    *> --rce;  if (rc < 0) {                                                          <* 
+    *>    DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);                              <* 
+    *>    return rce;                                                                 <* 
+    *> }                                                                              <*/
    /*---(close)--------------------------*/
-   rc = close (g_ttys [a_tty].fd);
-   DEBUG_LOOP   yLOG_value   ("close"     , rc);
-   --rce;  if (rc < 0) {
-      DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);
-      return rce;
-   }
+   /*> rc = close (g_ttys [a_tty].fd);                                                <* 
+    *> DEBUG_LOOP   yLOG_value   ("close"     , rc);                                  <* 
+    *> --rce;  if (rc < 0) {                                                          <* 
+    *>    DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);                              <* 
+    *>    return rce;                                                                 <* 
+    *> }                                                                              <*/
    /*---(save file descriptor)-----------*/
    g_ttys  [a_tty].fd = -1;
    g_polls [a_tty].fd = -1;
@@ -282,7 +283,7 @@ tty_display             (int a_tty)
    char       *p           = NULL;
    char        x_base      [LEN_LABEL];
    int         x_len       =    0;
-   char        x_prompt    [LEN_HUND];
+   char        x_prompt    [LEN_HUND]  = "welcome";
    int         c           =    0;
    tTERMIOS    x_termios;
    /*---(header)-------------------------*/
@@ -303,12 +304,12 @@ tty_display             (int a_tty)
       return rce;
    }
    /*---(save current settings)----------*/
-   rc = tcgetattr (g_ttys [a_tty].fd, &(g_ttys [a_tty].original));
-   DEBUG_LOOP   yLOG_value   ("getattr"   , rc);
-   --rce;  if (rc < 0) {
-      DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);
-      return rce;
-   }
+   /*> rc = tcgetattr (g_ttys [a_tty].fd, &(g_ttys [a_tty].original));                <* 
+    *> DEBUG_LOOP   yLOG_value   ("getattr"   , rc);                                  <* 
+    *> --rce;  if (rc < 0) {                                                          <* 
+    *>    DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);                              <* 
+    *>    return rce;                                                                 <* 
+    *> }                                                                              <*/
    /*> fcntl (fd, F_SETFL, 0);                                                                    <* 
     *> /+---(get current term settings)------+/                                                   <* 
     *> tcgetattr(fd, &s_oldtio);                                                                  <* 
@@ -341,14 +342,14 @@ tty_display             (int a_tty)
    DEBUG_LOOP   yLOG_value   ("langugage" , g_ttys [a_tty].language);
    DEBUG_LOOP   yLOG_value   ("cluster"   , g_ttys [a_tty].cluster);
    DEBUG_LOOP   yLOG_value   ("host"      , g_ttys [a_tty].host);
-   rc = ySTR_prompt (YSTR_BREADCRUMB, g_ttys [a_tty].language, g_ttys [a_tty].cluster, g_ttys [a_tty].host, x_prompt, NULL);
+   /*> rc = ySTR_prompt (YSTR_BREADCRUMB, "", g_ttys [a_tty].language, g_ttys [a_tty].cluster, g_ttys [a_tty].host, x_prompt, NULL);   <*/
    DEBUG_LOOP   yLOG_value   ("prompt"    , rc);
    DEBUG_LOOP   yLOG_info    ("x_prompt"  , x_prompt);
-	write (g_ttys [a_tty].fd, "\033[r\033[H\033[J", 9);
+   write (g_ttys [a_tty].fd, "\033[r\033[H\033[J", 9);
    write (g_ttys [a_tty].fd, x_prompt, strlen (x_prompt));
    write (g_ttys [a_tty].fd," " , 1);
    /*---(log the openning)---------------*/
-   rc = ySEC_getty_on  (g_ttys [a_tty].name);
+   rc =ySEC_watch (g_ttys [a_tty].name);
    DEBUG_LOOP   yLOG_value   ("getty_on"  , rc);
    --rce;  if (rc < 0) {
       DEBUG_LOOP   yLOG_exitr   (__FUNCTION__, rce);
@@ -514,6 +515,28 @@ tty_review              (void)
    return c;
 }
 
+char
+tty_status              (char *a_status)
+{
+   int         i           =    0;
+   if (a_status == NULL)  return 0;
+   a_status [MAX_TTYS] = '\0';
+   for (i = 0; i < MAX_TTYS; ++i)  a_status [i]     = ' ';
+   for (i = 0; i < MAX_TTYS; ++i) {
+      if (g_ttys [i].valid   == 'y')  a_status [i] = '-';
+      else continue;
+      if (g_ttys [i].allowed == 'y')  a_status [i] = 'a';
+      else  {
+         a_status [i] = '/';
+         continue;
+      }
+      if (g_ttys [i].watched == 'y')  a_status [i] = 'w';
+      else continue;
+      if (g_ttys [i].active  == 'y')  a_status [i] = 'A';
+   }
+   return 0;
+}
+
 
 
 /*====================------------------------------------====================*/
@@ -562,6 +585,10 @@ tty__unit               (char *a_question, int a_num)
    }
    else if (strcmp (a_question, "active"  )        == 0) {
       snprintf (unit_answer, LEN_RECD, "TTY active       : %-40.40s", s_active);
+   }
+   else if (strcmp (a_question, "status"  )        == 0) {
+      tty_status (t);
+      snprintf (unit_answer, LEN_RECD, "TTY status       : [%s]", t);
    }
    /*---(complete)-----------------------*/
    return unit_answer;

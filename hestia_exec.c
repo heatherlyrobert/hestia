@@ -11,6 +11,22 @@ tPOLL       test_poll   [1];
 /*====================------------------------------------====================*/
 static void      o___DRIVERS_________________o (void) {;}
 
+char
+exec_park               (void)
+{
+   /*---(locals)-----------+-----+-----+-*/
+   int         c           =    0;
+   /*---(header)-------------------------*/
+   DEBUG_LOOP  yLOG_enter   (__FUNCTION__);
+   while (1) {
+      DEBUG_LOOP  yLOG_value   ("c"         , c);
+      sleep (1);
+   }
+   /*---(complete)-----------------------*/
+   DEBUG_LOOP  yLOG_exit    (__FUNCTION__);
+   return 0;
+}
+
 long         /*--> set the cron times ----------------------------------------*/
 exec_time               (long a_now)
 {
@@ -50,7 +66,7 @@ exec_check              (void)
       /*---(prepare)---------------------*/
       DEBUG_LOOP   yLOG_info    (".device"   , g_ttys [i].device);
       /*---(check)-----------------------*/
-      rc = yEXEC_check (g_ttys [i].device, g_ttys [i].rpid, &x_return);
+      rc = yEXEC_verify (g_ttys [i].device, g_ttys [i].rpid, &x_return, NULL);
       DEBUG_LOOP   yLOG_value   ("check"     , rc);
       if (rc == YEXEC_RUNNING) {
          DEBUG_LOOP   yLOG_note    ("still running, next");
@@ -79,14 +95,14 @@ exec_check              (void)
          ++g_ttys [i].failures;
          break;
       }
+      /*---(reset run data)--------------*/
+      g_ttys [i].rpid   = -1;
+      g_ttys [i].active = TTY_UNUSED;
       /*---(re-open)------------------------*/
       rc = tty_open     (i);
       DEBUG_LOOP   yLOG_value   ("re-open"   , rc);
       rc = tty_display  (i);
       DEBUG_LOOP   yLOG_value   ("display"   , rc);
-      /*---(reset run data)--------------*/
-      g_ttys [i].rpid   = -1;
-      g_ttys [i].active = TTY_UNUSED;
       ++c;
       DEBUG_LOOP  yLOG_note    ("collected, next");
       /*---(done)------------------------*/
@@ -166,13 +182,13 @@ exec_poll               (void)
       /*---(launch)----------------------*/
       /*> DEBUG_LOOP  yLOG_value   ("input"     , fgetc (stdin));                     <*/
       if (my.user_mode == MODE_DAEMON) {
-         sprintf (x_cmd, "/sbin/hearth_debug @@kitchen --language %d --cluster %d --host %d %s", g_ttys[i].language, g_ttys[i].cluster, g_ttys [i].host, g_ttys[i].device);
+         sprintf (x_cmd, "/sbin/hearth_debug @@kitchen --hints --glacial --fastlock --language %d --cluster %d --host %d %s", g_ttys[i].language, g_ttys[i].cluster, g_ttys [i].host, g_ttys[i].device);
          /*> sprintf (x_cmd, "/sbin/hearth --language %d --cluster %d --host %d %s", g_ttys[i].language, g_ttys[i].cluster, g_ttys [i].host, g_ttys[i].device);   <*/
       } else {
          sprintf (x_cmd, "/bin/sleep %d", i / 10);
       }
       DEBUG_LOOP   yLOG_info    ("x_cmd"     , x_cmd);
-      g_ttys [i].rpid = yEXEC_run (g_ttys [i].device, "root", x_cmd, YEXEC_BASH, YEXEC_FULL, YEXEC_FORK, EXEC_FILE);
+      g_ttys [i].rpid = yEXEC_full (g_ttys [i].device, "root", x_cmd, YEXEC_BASH, YEXEC_FULL, YEXEC_FORK, EXEC_FILE);
       DEBUG_LOOP   yLOG_value   (".rpid"     , g_ttys [i].rpid);
       if (g_ttys [i].rpid < 0) {
          DEBUG_LOOP   yLOG_note    ("LAUNCH FAILED");
@@ -205,7 +221,7 @@ exec_loop              (void)
       if (rc < 0)  return rc;
       rc = exec_poll  ();
       if (rc < 0)  return rc;
-      sleep (1);
+      usleep ( 100000 * my.wait_dsec);
    }
 }
 

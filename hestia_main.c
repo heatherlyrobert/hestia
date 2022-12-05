@@ -11,7 +11,6 @@ main               (int a_argc, char *a_argv[])
    char        rce         =  -10;
    char        rc          =    0;
    /*---(standard startup)---------------*/
-   if (rc >= 0)  rc = PROG_preinit ();
    if (rc >= 0)  rc = yURG_logger  (a_argc, a_argv);
    if (rc >= 0)  rc = yURG_urgs    (a_argc, a_argv);
    if (rc >= 0)  rc = PROG_init    ();
@@ -23,13 +22,19 @@ main               (int a_argc, char *a_argv[])
    }
    /*---(main)---------------------------*/
    switch (my.user_mode) {
+   case MODE_PARK   :
+      rc = exec_park    ();
+      DEBUG_PROG   yLOG_value   ("park"      , rc);
+      break;
    case MODE_DAEMON :
       rc = PROG_daemon  ();
-      DEBUG_TOPS   yLOG_value   ("daemon"    , rc);
+      DEBUG_PROG   yLOG_value   ("daemon"    , rc);
+      if (rc < 0)  break;
       rc = tty_openall ();
-      DEBUG_TOPS   yLOG_value   ("openall"   , rc);
+      DEBUG_PROG   yLOG_value   ("openall"   , rc);
+      if (rc < 0)  break;
       rc = exec_loop    ();
-      DEBUG_TOPS   yLOG_value   ("loop"      , rc);
+      DEBUG_PROG   yLOG_value   ("loop"      , rc);
       break;
    case MODE_VERIFY :
    default          :

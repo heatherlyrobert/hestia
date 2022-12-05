@@ -4,37 +4,45 @@
 
 
 /*===[[ HEADER ]]=============================================================*/
-/*345678901-12345678901-123456789-123456789-123456789-123456789-123456789-123456789-123456789-*/
-
+/*                      ´·········1·········2·········3·········4·········5·········6·········7*/
+/*--------- 12345678901 ´123456789-123456789-123456789-123456789-123456789-123456789-123456789-*/
+/*········· ··········· ´·····························´········································*/
 #define     P_FOCUS     "SA (system administration)"
 #define     P_NICHE     "au (authentication)"
 #define     P_SUBJECT   "getty terminal daemon"
 #define     P_PURPOSE   "simple, experimental, and transparent getty terminal daemon"
-
+/*········· ··········· ´·····························´········································*/
 #define     P_NAMESAKE  "hestia-polyolbos (full of blessings)"
+#define     P_PRONOUNCE "hehs·tee·ah paa·lee·ohl·bohs"
 #define     P_HERITAGE  "virgin goddess of hearth, home, architecture, and eternal flame"
+#define     P_BRIEFLY   "protector of hearth and home"
 #define     P_IMAGERY   "regal, but modestly cloaked and vieled woman with a wooden staff"
-#define     P_REASON    ""
-
+#define     P_REASON    "obviously, as hestia is the guardian of the hearth and home"
+/*········· ··········· ´·····························´········································*/
 #define     P_ONELINE   P_NAMESAKE " " P_SUBJECT
-
-#define     P_BASENAME  ""
-#define     P_FULLPATH  ""
-#define     P_SUFFIX    ""
-#define     P_CONTENT   ""
-
+/*········· ··········· ´·····························´········································*/
+#define     P_HOMEDIR   "/home/system/khronos.heatherly_cron_daemon"
+#define     P_BASENAME  "hestia"
+#define     P_FULLPATH  "/sbin/hestia"
+#define     P_SUFFIX    "···"
+#define     P_CONTENT   "···"
+/*········· ··········· ´·····························´········································*/
 #define     P_SYSTEM    "gnu/linux   (powerful, ubiquitous, technical, and hackable)"
 #define     P_LANGUAGE  "ansi-c      (wicked, limitless, universal, and everlasting)"
+#define     P_COMPILER  "gcc 5.3.0"
 #define     P_CODESIZE  "small       (appoximately 1,000 slocl)"
 #define     P_DEPENDS   "yEXEC, ySEC, ySTR, yPARSE"
-
+/*········· ··········· ´·····························´········································*/
 #define     P_AUTHOR    "heatherlyrobert"
 #define     P_CREATED   "2012-01"
-
+/*········· ··········· ´·····························´········································*/
 #define     P_VERMAJOR  "1.--, settling into new framework of eos"
 #define     P_VERMINOR  "1.1-, preparing for next production roll-out"
-#define     P_VERNUM    "1.1a"
-#define     P_VERTXT    "small fixes for changes to yEXEC"
+#define     P_VERNUM    "1.1b"
+#define     P_VERTXT    "updated to yURG latest and name changing behavior"
+/*········· ··········· ´·····························´········································*/
+
+
 
 #define     P_USAGE     "hestia [OPTIONS]"
 #define     P_DEBUG     "hestia_debug [URGENTS] [OPTIONS]"
@@ -217,11 +225,12 @@ typedef struct termios   tTERMIOS;
 extern  char          unit_answer [LEN_RECD];
 
 
+#define     MODE_PARK        '#'
 #define     MODE_VERIFY      'v'
 #define     MODE_DAEMON      'd'
 #define     MODE_NORMAL      'n'
 #define     MODE_UNIT        'u'
-#define     MODE_VALID       "vdnu"
+#define     MODE_VALID       "#vdnu"
 
 
 /*345678901-12345678901-12345678901-12345678901-12345678901-12345678901-123456*/
@@ -236,10 +245,11 @@ struct cACCESSOR
    int         pid;                         /* process id of eos              */
    int         ppid;                        /* parent process id of eos       */
    /*---(time)-----------------*/
+   int         wait_dsec;                   /* update period in deci-seconds  */
    long        now;                         /* current epoch                  */
    char        heartbeat   [LEN_HUND];      /* latest heartbeat               */
    /*---(files)----------------*/
-   char        name_conf   [LEN_RECD];      /* name of configuration file     */
+   char        n_conf      [LEN_RECD];      /* name of configuration file     */
    char        name_exec   [LEN_RECD];      /* name of execution detail file  */
    char        name_status [LEN_RECD];      /* name of status file            */
    char        name_heartbeat [LEN_PATH];   /* pulser file name               */
@@ -371,9 +381,8 @@ extern      tPOLL       g_polls     [MAX_TTYS];
 /*345678901-12345678901-12345678901-12345678901-12345678901-12345678901-123456*/
 /*---(support)--------------*/
 char*       PROG_version            (void);
-char        PROG_about              (void);
 /*---(startup)--------------*/
-char        PROG_preinit            (void);
+char        PROG_defaults           (void);
 char        PROG_init               (void);
 char        PROG_args               (int a_argc, char *a_argv[]);
 char        PROG_begin              (void);
@@ -387,12 +396,14 @@ char        PROG_end                (void);
 char        prog__unit_quiet        (void);
 char        prog__unit_loud         (void);
 char        prog__unit_end          (void);
+char*       prog__unit              (char *a_question, int a_num);
 
-char        base_config             (void);
+char        conf__handler           (int n, uchar *a_verb, char a_exist, void *a_handler);
+char        conf_driver             (void);
 
-char        tty_valid               (char *a_name);
 char        tty_init                (void);
 char        tty_wrap                (void);
+char        tty_authorize           (char *a_dev, char *a_listen);
 char        tty_open                (int a_tty);
 char        tty_close               (int a_tty);
 char        tty_display             (int a_num);
@@ -406,6 +417,7 @@ char        tty__unit_ignored       (int a_tty);
 char        tty__unit_active        (int a_tty);
 char        tty__unit_unused        (int a_tty);
 
+char        exec_park               (void);
 long        exec_time               (long a_now);
 char        exec_poll               (void);
 char        exec_loop               (void);
@@ -419,12 +431,6 @@ char        rptg_ttys               (void);
 char*       rptg__unit              (char *a_question, int a_num);
 
      
-int         audit_find         (char *a_dev, int  a_pid, int *a_pos);
-char        audit_login        (char *a_dev, char *a_user, int a_rpid);
-char        audit_fail         (char *a_dev, char a_type);
-char        audit_logout       (char *a_dev, int a_rpid, int a_rc);
-char        audit_system       (char a_type);
-
 char*       unit_accessor      (char*, int);
 
 

@@ -31,50 +31,6 @@ PROG_version       (void)
    return verstring;
 }
 
-char             /* [------] display usage help information ------------------*/
-PROG_about         (void)
-{
-   /*---(locals)-----------+-----+-----+-*/
-   int         i           =    0;
-   char        t           [LEN_RECD];
-   int         x_len       =    0;
-   /*---(display)----------+-----+-----+-*/
-   printf("\n");
-   printf("focus     : %s\n", P_FOCUS);
-   printf("niche     : %s\n", P_NICHE);
-   printf("purpose   : %s\n", P_PURPOSE);
-   printf("\n");
-   printf("namesake  : %s\n", P_NAMESAKE);
-   printf("heritage  : %s\n", P_HERITAGE);
-   printf("imagery   : %s\n", P_IMAGERY);
-   printf("\n");
-   printf("system    : %s\n", P_SYSTEM);
-   printf("language  : %s\n", P_LANGUAGE);
-   printf("codesize  : %s\n", P_CODESIZE);
-   printf("\n");
-   printf("author    : %s\n", P_AUTHOR);
-   printf("created   : %s\n", P_CREATED);
-   printf("depends   : %s\n", P_DEPENDS);
-   printf("\n");
-   printf("ver num   : %s\n", P_VERNUM);
-   printf("ver txt   : %s\n", P_VERTXT);
-   printf("\n");
-   printf("usage     : %s\n", P_USAGE);
-   printf("debug     : %s\n", P_DEBUG);
-   printf("\n");
-   strcpy (t, P_SUMMARY);
-   x_len = strlen (t);
-   for (i = 0; i < x_len; ++i)   if (t [i] == '¦')  t [i] = '\n';
-   printf ("%s\n", t);
-   printf("priority  : %s\n", P_PRIORITY);
-   printf("principal : %s\n", P_PRINCIPAL);
-   printf("\n");
-   printf("alterns   : %s\n", P_ALTERNS);
-   printf("reminder  : %s\n", P_REMINDER);
-   printf("\n");
-   exit (0);
-}
-
 
 
 /*====================------------------------------------====================*/
@@ -82,10 +38,16 @@ PROG_about         (void)
 /*====================------------------------------------====================*/
 static void      o___STARTUP_________________o (void) {;}
 
-char         /*--> before logging starts ------------[ ------ [abc.de.fghijk]-*/
-PROG_preinit            (void)
+char
+PROG_defaults      (void)
 {
-   return 0;
+   my.user_mode = MODE_DAEMON;
+   DEBUG_PROG   yLOG_note    ("setting file names");
+   snprintf (my.n_conf        , LEN_PATH, "%s%s", DIR_ETC  , FILE_CONF);
+   snprintf (my.name_exec     , LEN_PATH, "%s%s", DIR_TMP  , FILE_EXEC);
+   snprintf (my.name_status   , LEN_PATH, "%s%s", DIR_TMP  , FILE_STATUS);
+   snprintf (my.name_heartbeat, LEN_PATH, "%s%s", DIR_RUN  , FILE_HEARTBEAT);
+   my.wait_dsec = 10;
 }
 
 char         /*--> before argument processing -------[ ------ [abc.de.fghijk]-*/
@@ -95,103 +57,107 @@ PROG_init          (void)
    char        rce         =  -10;
    char        rc          =    0;
    /*---(logger)-------------------------*/
-   DEBUG_TOPS   yLOG_enter   (__FUNCTION__);
-   DEBUG_TOPS   yLOG_info    ("namesake"  , P_NAMESAKE);
-   DEBUG_TOPS   yLOG_info    ("heritage"  , P_HERITAGE);
-   DEBUG_TOPS   yLOG_info    ("imagery"   , P_IMAGERY);
-   DEBUG_TOPS   yLOG_info    ("purpose"   , P_PURPOSE);
-   DEBUG_TOPS   yLOG_info    ("version"   , PROG_version    ());
-   DEBUG_TOPS   yLOG_info    ("yEXEC"     , yEXEC_version   ());
-   DEBUG_TOPS   yLOG_info    ("yLOG"      , yLOGS_version   ());
-   DEBUG_TOPS   yLOG_info    ("yPARSE"    , yPARSE_version  ());
-   /*> DEBUG_TOPS   yLOG_info    ("ySEC"      , ySEC_version    ());                  <*/
-   DEBUG_TOPS   yLOG_info    ("ySTR"      , ySTR_version    ());
-   DEBUG_TOPS   yLOG_info    ("yURG"      , yURG_version    ());
+   DEBUG_PROG   yLOG_enter   (__FUNCTION__);
+   DEBUG_PROG   yLOG_info    ("namesake"  , P_NAMESAKE);
+   DEBUG_PROG   yLOG_info    ("heritage"  , P_HERITAGE);
+   DEBUG_PROG   yLOG_info    ("imagery"   , P_IMAGERY);
+   DEBUG_PROG   yLOG_info    ("purpose"   , P_PURPOSE);
+   DEBUG_PROG   yLOG_info    ("version"   , PROG_version    ());
+   DEBUG_PROG   yLOG_info    ("yEXEC"     , yEXEC_version   ());
+   DEBUG_PROG   yLOG_info    ("yLOG"      , yLOGS_version   ());
+   DEBUG_PROG   yLOG_info    ("yPARSE"    , yPARSE_version  ());
+   DEBUG_PROG   yLOG_info    ("ySEC"      , ySEC_version    ());
+   DEBUG_PROG   yLOG_info    ("ySTR"      , ySTR_version    ());
+   DEBUG_PROG   yLOG_info    ("yURG"      , yURG_version    ());
    /*---(defaults)-----------------------*/
-   my.user_mode = MODE_DAEMON;
+   PROG_defaults ();
    srand (time(NULL));
    /*---(call whoami)--------------------*/
    rc = yEXEC_whoami (&my.pid, &my.ppid, &my.uid, NULL, &my.who, 'n');
-   DEBUG_TOPS   yLOG_value   ("whoami"    , rc);
+   DEBUG_PROG   yLOG_value   ("whoami"    , rc);
    --rce;  if (rc < 0) {
-      DEBUG_TOPS   yLOG_exitr   (__FUNCTION__, rce);
+      DEBUG_PROG   yLOG_exitr   (__FUNCTION__, rce);
       return rce;
    }
-   DEBUG_TOPS   yLOG_value   ("pid"       , my.pid);
-   DEBUG_TOPS   yLOG_value   ("ppid"      , my.ppid);
-   DEBUG_TOPS   yLOG_value   ("uid"       , my.uid);
-   DEBUG_TOPS   yLOG_info    ("who"       , my.who);
+   DEBUG_PROG   yLOG_value   ("pid"       , my.pid);
+   DEBUG_PROG   yLOG_value   ("ppid"      , my.ppid);
+   DEBUG_PROG   yLOG_value   ("uid"       , my.uid);
+   DEBUG_PROG   yLOG_info    ("who"       , my.who);
    /*---(initialize)---------------------*/
    rc = tty_init ();
    DEBUG_ARGS   yLOG_info    ("yPARSE"   ,"initializing");
    rc = yPARSE_init  ('-', NULL, '-');
    rc = yPARSE_delimiters  ("");
    /*---(complete)-----------------------*/
-   DEBUG_TOPS  yLOG_exit   (__FUNCTION__);
+   DEBUG_PROG  yLOG_exit   (__FUNCTION__);
    return 0;
 }
 
 #define    TWOARG      if (two_arg == 1)
 
 char         /*--> command line arguments -----------[ ------ [abc.de.fghijk]-*/
-PROG_args          (int argc, char *argv[])
+PROG_args          (int a_argc, char *a_argv [])
 {
-   /*---(locals)-------------------------*/
-   char     *a         = NULL;         /* current argument                    */
-   int       i         = 0;            /* loop iterator -- arguments          */
-   int       x_len     = 0;            /* argument length                     */
-   char      two_arg   = 0;
+   /*---(locals)-----------+-----+-----+-*/
+   char        rc          =    0;
+   int         i           =    0;            /* loop iterator -- arguments          */
+   char       *a           = NULL;         /* current argument                    */
+   int         x_len       =    0;            /* argument length                     */
+   char        two_arg     =    0;
+   int         x_max       =    0;
    /*---(begin)--------------------------*/
-   DEBUG_TOPS   yLOG_enter   (__FUNCTION__);
-   DEBUG_TOPS   yLOG_value   ("argc"      , argc);
-   if (argc == 1) {
-      DEBUG_TOPS   yLOG_exit    (__FUNCTION__);
+   DEBUG_PROG   yLOG_enter   (__FUNCTION__);
+   DEBUG_PROG   yLOG_value   ("a_argc"      , a_argc);
+   if (a_argc == 1) {
+      DEBUG_PROG   yLOG_exit    (__FUNCTION__);
       return 0;
    }
    /*---(program name)--------------------------*/
-   strlcpy (my.prog_name, argv[0], LEN_USER);
-   DEBUG_TOPS   yLOG_value   ("prog name" , my.prog_name);
+   strlcpy (my.prog_name, a_argv [0], LEN_USER);
+   DEBUG_PROG   yLOG_value   ("prog name" , my.prog_name);
    /*---(process)------------------------*/
-   for (i = 1; i < argc; ++i) {
-      a = argv [i];
-      if (i < argc - 1) two_arg = 1; else two_arg = 0;
+   for (i = 1; i < a_argc; ++i) {
+      a = a_argv [i];
+      if (i < a_argc - 1) two_arg = 1;
+      else                two_arg = 0;
       x_len = strllen (a, LEN_RECD);
       /*---(skip debugging)--------------*/
       if      (a[0] == '@')                     continue;
-      my.user_mode = MODE_VERIFY;
       /*---(version)---------------------*/
-      if      (strcmp (a, "--version"      ) == 0) {
-         printf ("%s\n", PROG_version ());
-         DEBUG_TOPS   yLOG_exit    (__FUNCTION__);
-         return -1;
-      }
-      else if (strcmp (a, "--about"        ) == 0) {
-         PROG_about ();
-         DEBUG_TOPS   yLOG_exit    (__FUNCTION__);
-         return -1;
-      }
-      else if (strcmp (a, "--verify"       ) == 0) {
-         my.user_mode = MODE_VERIFY;
-      }
+      if      (strcmp  (a, "--version"      ) == 0) { printf ("%s\n", PROG_version ()); rc = -1; }
+      else if (strcmp  (a, "--conf"         ) == 0) { TWOARG  strlfile (a, my.n_conf, a_argv [++i], "conf", LEN_RECD); }
+      else if (strcmp  (a, "--daemon"       ) == 0)   my.user_mode = MODE_DAEMON;
+      else if (strcmp  (a, "--verify"       ) == 0)   my.user_mode = MODE_VERIFY;
+      else if (strcmp  (a, "--park"         ) == 0)   my.user_mode = MODE_PARK;
+      else if (strcmp  (a, "--fast"         ) == 0)   my.wait_dsec =   2; /*   0.2 min */
+      else if (strcmp  (a, "--norm"         ) == 0)   my.wait_dsec =  10; /*   1   min */
+      else if (strcmp  (a, "--slow"         ) == 0)   my.wait_dsec = 100; /*  10   min */
+      else if (strncmp (a, "--abcde"     , 7) == 0)   ;
+      else if (strncmp (a, "--12345"     , 7) == 0)   ;
       /*---(unknown)---------------------*/
       else    printf("requested action not understood or incomplete\n");
    }
+   /*---(max name)-----------------------*/
+   rc = yEXEC_maxname (a_argc, a_argv, &x_max);
+   strlcpy (a_argv [0], P_ONELINE, x_max);
    /*---(complete)-----------------------*/
-   DEBUG_TOPS   yLOG_exit    (__FUNCTION__);
-   return 0;
+   DEBUG_PROG   yLOG_exit    (__FUNCTION__);
+   return rc;
 }
+
+
+/*345678901-12345678901-123456789-123456789-123456789-123456789-123456789-123456789-123456789-*/
+/*> hestia-polyolbos (full of blessings) getty terminal daemon                        <* 
+ *> /sbin/hestia --loadsharing --aggressive --hardened --123456                       <*/
+
+/*> khronos-anileis (merciless time) primary batch-automation daemon                  <* 
+ *> khronos --daemon --abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrs                  <*/
 
 char         /*--> before normal start --------------[ ------ [abc.de.fghijk]-*/
 PROG_begin         (void)
 {
    /*---(begin)------------+-----------+-*/
    DEBUG_PROG   yLOG_enter  (__FUNCTION__);
-   /*---(set file names)-----------------*/
-   DEBUG_PROG   yLOG_note    ("setting file names");
-   snprintf (my.name_conf     , LEN_PATH, "%s%s", DIR_ETC  , FILE_CONF);
-   snprintf (my.name_exec     , LEN_PATH, "%s%s", DIR_TMP  , FILE_EXEC);
-   snprintf (my.name_status   , LEN_PATH, "%s%s", DIR_TMP  , FILE_STATUS);
-   snprintf (my.name_heartbeat, LEN_PATH, "%s%s", DIR_RUN  , FILE_HEARTBEAT);
    /*---(complete)-----------------------*/
    DEBUG_PROG   yLOG_exit   (__FUNCTION__);
    return   0;
@@ -204,15 +170,15 @@ PROG_final         (void)
    char        rce         =  -10;
    char        rc          =    0;
    /*---(logger)-------------------------*/
-   DEBUG_TOPS   yLOG_enter   (__FUNCTION__);
-   rc = base_config ();
-   DEBUG_TOPS   yLOG_value   ("conf"      , rc);
+   DEBUG_PROG   yLOG_enter   (__FUNCTION__);
+   rc = conf_driver ();
+   DEBUG_PROG   yLOG_value   ("conf"      , rc);
    --rce;  if (rc < 0) {
       DEBUG_PROG   yLOG_exitr  (__FUNCTION__, rce);
       return rce;
    }
    rc = tty_review  ();
-   DEBUG_TOPS   yLOG_value   ("review"    , rc);
+   DEBUG_PROG   yLOG_value   ("review"    , rc);
    --rce;  if (rc < 0) {
       DEBUG_PROG   yLOG_exitr  (__FUNCTION__, rce);
       return rce;
@@ -312,7 +278,8 @@ PROG_daemon        (void)
    /*---(header)-------------------------*/
    DEBUG_ENVI   yLOG_enter   (__FUNCTION__);
    /*---(check for other)----------------*/
-   x_running = yEXEC_find ("hestia", NULL);
+   x_running  = yEXEC_find ("hestia", NULL);
+   x_running += yEXEC_find ("hestia_debug", NULL);
    DEBUG_ENVI   yLOG_value   ("x_running" , x_running);
    --rce;  if (x_running > 1) {
       printf ("hestia already running in daemon mode\n");
@@ -329,8 +296,8 @@ PROG_daemon        (void)
       return rce;
    }
    /*---(fork off and die)---------------*/
-   DEBUG_ENVI   yLOG_value   ("logger"    , yURG_lognum ());
-   rc = yEXEC_daemon (yURG_lognum (), &my.pid);
+   DEBUG_ENVI   yLOG_value   ("logger"    , yLOGS_lognum ());
+   rc = yEXEC_daemon (yLOGS_lognum (), &my.pid);
    DEBUG_ENVI   yLOG_value   ("daemon"    , rc);
    --rce;  if (rc < 0) {
       printf ("hestia could not be daemonized\n");
@@ -385,7 +352,7 @@ prog__unit_files   (void)
    /*---(locals)-----------+-----+-----+-*/
    char        x_cmd       [LEN_RECD];
    /*---(change file locations)----------*/
-   snprintf (my.name_conf     , LEN_PATH, "%s%s", DIR_UNIT , FILE_CONF);
+   snprintf (my.n_conf        , LEN_PATH, "%s%s", DIR_UNIT , FILE_CONF);
    snprintf (my.name_exec     , LEN_PATH, "%s%s", DIR_UNIT , FILE_EXEC);
    snprintf (my.name_status   , LEN_PATH, "%s%s", DIR_UNIT , FILE_STATUS);
    snprintf (my.name_heartbeat, LEN_PATH, "%s%s", DIR_UNIT , FILE_HEARTBEAT);
@@ -408,14 +375,12 @@ prog__unit_quiet   (void)
    int         x_argc      = 1;
    char       *x_argv [1]  = { "hestia" };
    /*---(run)----------------------------*/
-   PROG_preinit   ();
    yURG_logger    (x_argc, x_argv);
    yURG_urgs      (x_argc, x_argv);
    PROG_init      ();
    PROG_args      (x_argc, x_argv);
    PROG_begin     ();
    my.user_mode = MODE_UNIT;
-   prog__unit_files ();
    /*---(complete)-----------------------*/
    return 0;
 }
@@ -427,14 +392,12 @@ prog__unit_loud    (void)
    int         x_argc      = 4;
    char       *x_argv [4]  = { "hestia_unit", "@@kitchen", "@@yparse", "@@yexec"  };
    /*---(run)----------------------------*/
-   PROG_preinit   ();
    yURG_logger    (x_argc, x_argv);
    yURG_urgs      (x_argc, x_argv);
    PROG_init      ();
    PROG_args      (x_argc, x_argv);
    PROG_begin     ();
    my.user_mode = MODE_UNIT;
-   prog__unit_files ();
    /*---(complete)-----------------------*/
    return 0;
 }
@@ -452,5 +415,36 @@ prog__unit_end     (void)
    system   (x_cmd);
    /*---(complete)-----------------------*/
    return 0;
+}
+
+
+
+/*====================------------------------------------====================*/
+/*===----                         unit testing                         ----===*/
+/*====================------------------------------------====================*/
+static void  o___UNITTEST________o () { return; }
+
+char*            /*--> unit test accessor ------------------------------*/
+prog__unit              (char *a_question, int n)
+{ 
+   /*---(locals)-----------+-----+-----+-*/
+   char        rce         =  -10;
+   int         rc          =    0;
+   int         c           =    0;
+   char        x_recd      [LEN_RECD]  = "";
+   char        t           [LEN_DESC]  = "";
+   /*---(prepare)------------------------*/
+   strlcpy  (unit_answer, "PROG             : question not understood", LEN_RECD);
+   /*---(crontab name)-------------------*/
+   if      (strcmp (a_question, "conf"          )  == 0) {
+      sprintf (t, "%2d[%.20s]", strlen (my.n_conf), my.n_conf);
+      c = yEXEC_file_verify (my.n_conf, n, x_recd);
+      snprintf (unit_answer, LEN_RECD, "PROG conf        : %3d  %-24.24s  %2d[%.45s]", c, t, strlen (x_recd), x_recd);
+   }
+   else if (strcmp (a_question, "speed"         )  == 0) {
+      snprintf (unit_answer, LEN_RECD, "PROG speed       : %3d wait", my.wait_dsec);
+   }
+   /*---(complete)-----------------------*/
+   return unit_answer;
 }
 
