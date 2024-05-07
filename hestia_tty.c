@@ -30,9 +30,9 @@ tty_init                (void)
       sprintf (g_ttys [i].name  , "tty%d"     , i);
       sprintf (g_ttys [i].device, "/dev/tty%d", i);
       /*---(host)------------------------*/
-      g_ttys [i].language = ySTR_language ();
-      g_ttys [i].cluster  = ySTR_cluster  (g_ttys [i].language, -1, NULL, NULL);
-      g_ttys [i].host     = ySTR_host     (g_ttys [i].language, -1, NULL, NULL);
+      g_ttys [i].language = yASCII_language (NULL, NULL);
+      g_ttys [i].cluster  = yASCII_cluster  (g_ttys [i].language, NULL, NULL);
+      g_ttys [i].host     = yASCII_host     (g_ttys [i].language, NULL, NULL);
       /*---(flags)-----------------------*/
       g_ttys [i].valid    = TTY_INVALID;
       g_ttys [i].allowed  = TTY_BLOCKED;
@@ -104,7 +104,7 @@ tty_authorize           (char *a_dev, char *a_listen)
       return rce;
    }
    /*---(get number)---------------------*/
-   strlcpy (t, a_dev + 8, LEN_TERSE);
+   ystrlcpy (t, a_dev + 8, LEN_TERSE);
    DEBUG_INPT   yLOG_snote   (t);
    x_tty = atoi (t);
    DEBUG_INPT   yLOG_sint    (x_tty);
@@ -342,7 +342,7 @@ tty_display             (int a_tty)
    DEBUG_LOOP   yLOG_value   ("langugage" , g_ttys [a_tty].language);
    DEBUG_LOOP   yLOG_value   ("cluster"   , g_ttys [a_tty].cluster);
    DEBUG_LOOP   yLOG_value   ("host"      , g_ttys [a_tty].host);
-   /*> rc = ySTR_prompt (YSTR_BREADCRUMB, "", g_ttys [a_tty].language, g_ttys [a_tty].cluster, g_ttys [a_tty].host, x_prompt, NULL);   <*/
+   /*> rc = yASCII_prompt (YSTR_BREADCRUMB, "", g_ttys [a_tty].language, g_ttys [a_tty].cluster, g_ttys [a_tty].host, x_prompt, NULL);   <*/
    DEBUG_LOOP   yLOG_value   ("prompt"    , rc);
    DEBUG_LOOP   yLOG_info    ("x_prompt"  , x_prompt);
    write (g_ttys [a_tty].fd, "\033[r\033[H\033[J", 9);
@@ -556,7 +556,7 @@ tty__unit               (char *a_question, int a_num)
    tFILE      *x_file      = NULL;
    tSTAT       s;
    /*---(prepare)------------------------*/
-   strlcpy  (unit_answer, "TTY              : question not understood", LEN_RECD);
+   ystrlcpy  (unit_answer, "TTY              : question not understood", LEN_RECD);
    /*---(crontab name)-------------------*/
    if (a_num < 0 || a_num >= MAX_TTYS) {
       snprintf (unit_answer, LEN_RECD, "TTY number  (%2d) : out of range", a_num);

@@ -112,7 +112,7 @@ rptg__unit              (char *a_question, int a_num)
    int         rc          =    0;
    char        x_heartbeat [LEN_HUND];
    /*---(prepare)------------------------*/
-   strlcpy  (unit_answer, "RPTG             : question not understood", LEN_RECD);
+   ystrlcpy  (unit_answer, "RPTG             : question not understood", LEN_RECD);
    /*---(crontab name)-------------------*/
    if      (strcmp (a_question, "heartbeat"     )  == 0) {
       snprintf (unit_answer, LEN_RECD, "RPTG heartbeat   : %s", my.heartbeat);

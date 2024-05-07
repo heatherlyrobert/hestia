@@ -4,6 +4,12 @@
 
 
 char      verstring    [500];
+tACCESSOR  my;
+struct cFONT       font [50];
+int         nfont = 0;
+int         cfont = 0;
+tENTRY      entry;
+tTITLES     titles      [30];
 
 
 
@@ -73,7 +79,7 @@ PROG_init          (void)
    PROG_defaults ();
    srand (time(NULL));
    /*---(call whoami)--------------------*/
-   rc = yEXEC_whoami (&my.pid, &my.ppid, &my.uid, NULL, &my.who, 'n');
+   rc = yEXEC_whoami (&my.pid, &my.ppid, &my.uid, NULL, NULL, &my.who, 'n', NULL, NULL, NULL);
    DEBUG_PROG   yLOG_value   ("whoami"    , rc);
    --rce;  if (rc < 0) {
       DEBUG_PROG   yLOG_exitr   (__FUNCTION__, rce);
@@ -86,8 +92,7 @@ PROG_init          (void)
    /*---(initialize)---------------------*/
    rc = tty_init ();
    DEBUG_ARGS   yLOG_info    ("yPARSE"   ,"initializing");
-   rc = yPARSE_init  ('-', NULL, '-');
-   rc = yPARSE_delimiters  ("");
+   rc = yPARSE_config (YPARSE_MANUAL, NULL, YPARSE_ONETIME, YPARSE_FIELD, YPARSE_FILL);
    /*---(complete)-----------------------*/
    DEBUG_PROG  yLOG_exit   (__FUNCTION__);
    return 0;
@@ -113,19 +118,19 @@ PROG_args          (int a_argc, char *a_argv [])
       return 0;
    }
    /*---(program name)--------------------------*/
-   strlcpy (my.prog_name, a_argv [0], LEN_USER);
+   ystrlcpy (my.prog_name, a_argv [0], LEN_USER);
    DEBUG_PROG   yLOG_value   ("prog name" , my.prog_name);
    /*---(process)------------------------*/
    for (i = 1; i < a_argc; ++i) {
       a = a_argv [i];
       if (i < a_argc - 1) two_arg = 1;
       else                two_arg = 0;
-      x_len = strllen (a, LEN_RECD);
+      x_len = ystrllen (a, LEN_RECD);
       /*---(skip debugging)--------------*/
       if      (a[0] == '@')                     continue;
       /*---(version)---------------------*/
       if      (strcmp  (a, "--version"      ) == 0) { printf ("%s\n", PROG_version ()); rc = -1; }
-      else if (strcmp  (a, "--conf"         ) == 0) { TWOARG  strlfile (a, my.n_conf, a_argv [++i], "conf", LEN_RECD); }
+      else if (strcmp  (a, "--conf"         ) == 0) { TWOARG  ystrlfile (a, my.n_conf, a_argv [++i], "conf", LEN_RECD); }
       else if (strcmp  (a, "--daemon"       ) == 0)   my.user_mode = MODE_DAEMON;
       else if (strcmp  (a, "--verify"       ) == 0)   my.user_mode = MODE_VERIFY;
       else if (strcmp  (a, "--park"         ) == 0)   my.user_mode = MODE_PARK;
@@ -139,7 +144,7 @@ PROG_args          (int a_argc, char *a_argv [])
    }
    /*---(max name)-----------------------*/
    rc = yEXEC_maxname (a_argc, a_argv, &x_max);
-   strlcpy (a_argv [0], P_ONELINE, x_max);
+   ystrlcpy (a_argv [0], P_ONELINE, x_max);
    /*---(complete)-----------------------*/
    DEBUG_PROG   yLOG_exit    (__FUNCTION__);
    return rc;
@@ -434,7 +439,7 @@ prog__unit              (char *a_question, int n)
    char        x_recd      [LEN_RECD]  = "";
    char        t           [LEN_DESC]  = "";
    /*---(prepare)------------------------*/
-   strlcpy  (unit_answer, "PROG             : question not understood", LEN_RECD);
+   ystrlcpy  (unit_answer, "PROG             : question not understood", LEN_RECD);
    /*---(crontab name)-------------------*/
    if      (strcmp (a_question, "conf"          )  == 0) {
       sprintf (t, "%2d[%.20s]", strlen (my.n_conf), my.n_conf);

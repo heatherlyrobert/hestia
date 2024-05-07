@@ -8,7 +8,7 @@ NAME_BASE  = hestia
 # additional standard and outside libraries
 LIB_STD    = -lcrypt -lm
 # all heatherly libraries used, debug versions whenever available
-LIB_MINE   = -lyEXEC_debug -lySEC -lySTR_debug -lyPARSE_debug
+LIB_MINE   = -lyEXEC_debug -lySEC -lySTR_debug -lyPARSE_debug -lyASCII_debug
 # directory for production code, no trailing slash
 INST_DIR   = /sbin
 

@@ -38,8 +38,8 @@
 /*········· ··········· ´·····························´········································*/
 #define     P_VERMAJOR  "1.--, settling into new framework of eos"
 #define     P_VERMINOR  "1.1-, preparing for next production roll-out"
-#define     P_VERNUM    "1.1b"
-#define     P_VERTXT    "updated to yURG latest and name changing behavior"
+#define     P_VERNUM    "1.1c"
+#define     P_VERTXT    "update to yEXEC_whoami"
 /*········· ··········· ´·····························´········································*/
 
 
@@ -203,10 +203,10 @@
 
 #include    <dirent.h>
 
-
-
 #include    <pwd.h>                    /* LINUX     password access           */
 #include    <shadow.h>                 /* LINIX     password shadow access    */
+
+#include    <yASCII.h>
 
 
 #define     LOGIN       "/bin/login"
@@ -234,6 +234,7 @@ extern  char          unit_answer [LEN_RECD];
 
 
 /*345678901-12345678901-12345678901-12345678901-12345678901-12345678901-123456*/
+typedef struct cACCESSOR  tACCESSOR;
 struct cACCESSOR
 {
    /*---(behavior)-------------*/
@@ -254,7 +255,8 @@ struct cACCESSOR
    char        name_status [LEN_RECD];      /* name of status file            */
    char        name_heartbeat [LEN_PATH];   /* pulser file name               */
    /*---(done)------------------*/
-} my;
+};
+extern tACCESSOR  my;
 
 
 
@@ -282,7 +284,9 @@ extern char        binary      [10] [300];
 extern char        dots        [10] [300];
 extern char        basic       [10] [300];
 
-struct cFONT       font [50];
+
+
+extern struct cFONT       font [50];
 extern int         nfont;
 extern int         cfont;
 
@@ -300,7 +304,7 @@ struct   cENTRY {
    char     pointer     [ 20];
    char     suffix      [ 20];
 };
-tENTRY      entry;
+extern tENTRY      entry;
 
 typedef struct cTITLES tTITLES;
 struct    cTITLES {
@@ -314,7 +318,7 @@ struct    cTITLES {
    char     password    [20];
    char     attempt     [20];
 };
-tTITLES     titles      [30];
+extern tTITLES     titles      [30];
 
 
 

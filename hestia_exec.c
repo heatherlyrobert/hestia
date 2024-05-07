@@ -350,7 +350,7 @@ char*            /*--> unit test accessor ------------------------------*/
 exec__unit              (char *a_question, int a_num)
 {
    /*---(prepare)------------------------*/
-   strlcpy  (unit_answer, "EXEC             : question not understood", LEN_RECD);
+   ystrlcpy  (unit_answer, "EXEC             : question not understood", LEN_RECD);
    /*---(crontab name)-------------------*/
    if      (strcmp (a_question, "time"    )        == 0) {
       snprintf (unit_answer, LEN_RECD, "EXEC time        : %-10d", my.now);
