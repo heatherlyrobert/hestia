@@ -38,8 +38,8 @@
 /*········· ··········· ´·····························´········································*/
 #define     P_VERMAJOR  "1.--, settling into new framework of eos"
 #define     P_VERMINOR  "1.1-, preparing for next production roll-out"
-#define     P_VERNUM    "1.1c"
-#define     P_VERTXT    "update to yEXEC_whoami"
+#define     P_VERNUM    "1.1d"
+#define     P_VERTXT    "tiny comment out of yEXEC_file_verify"
 /*········· ··········· ´·····························´········································*/
 
 

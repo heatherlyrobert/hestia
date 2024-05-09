@@ -443,7 +443,7 @@ prog__unit              (char *a_question, int n)
    /*---(crontab name)-------------------*/
    if      (strcmp (a_question, "conf"          )  == 0) {
       sprintf (t, "%2d[%.20s]", strlen (my.n_conf), my.n_conf);
-      c = yEXEC_file_verify (my.n_conf, n, x_recd);
+      /*> c = yEXEC_file_verify (my.n_conf, n, x_recd);                               <*/
       snprintf (unit_answer, LEN_RECD, "PROG conf        : %3d  %-24.24s  %2d[%.45s]", c, t, strlen (x_recd), x_recd);
    }
    else if (strcmp (a_question, "speed"         )  == 0) {
